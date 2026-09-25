@@ -1,0 +1,42 @@
+  FAIL en-US-GuyNeural 'play music': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'play some music': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'play a song': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'put on some music': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'play my playlist': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'play music in the living room': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'play music': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'play some music': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'play a song': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'put on some music': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'play my playlist': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'play music in the living room': Invalid rate '0%'.
+  FAIL en-US-GuyNeural "what's the weather": Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'what is the weather': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'what time is it': Invalid rate '0%'.
+  FAIL en-US-GuyNeural "what's the temperature outside": Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'search for the weather': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'ask about the weather': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'what day is it today': Invalid rate '0%'.
+  FAIL en-US-JennyNeural "what's the weather": Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'what is the weather': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'what time is it': Invalid rate '0%'.
+  FAIL en-US-JennyNeural "what's the temperature outside": Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'search for the weather': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'ask about the weather': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'what day is it today': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'turn on the lights': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'turn off the lights': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'lights on': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'lights off': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'turn on the light': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'turn off the light': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'switch on the lights': Invalid rate '0%'.
+  FAIL en-US-GuyNeural 'switch off the lights': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'turn on the lights': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'turn off the lights': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'lights on': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'lights off': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'turn on the light': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'turn off the light': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'switch on the lights': Invalid rate '0%'.
+  FAIL en-US-JennyNeural 'switch off the lights': Invalid rate '0%'.

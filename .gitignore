@@ -1,0 +1,8 @@
+.venv/
+data/
+pip_install.log
+pip_install_err.log
+__pycache__/
+*.pt
+*.onnx
+.ipynb_checkpoints/
