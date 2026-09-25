@@ -22,9 +22,11 @@ Progress: 60% — ETA ~30 min (docs + push; TTS gen continues in background)
 > fan. the smart light with dimming can be an api ui for thats free and what
 > else can be an api ui.
 ### Interpretation (agent — user may edit this section)
-- **Handover = docs, not a file move.** The session named "AI231 ME2" already
-  exists and its cwd IS this repo (`C:\Users\Jan\.cline\data\workspaces\chat\AI231_ME2`),
-  so it sees every file already. The handover is: this entry + PLAN.md
+- **Handover = docs, not a file move.** (Correction 2026-09-25: the session did
+  NOT exist yet — only this folder did; muji confused the folder with a session.
+  The real session "AI231 ME2" was then created under the AI231 workspace with
+  cwd = this repo, `C:\Users\Jan\.cline\data\workspaces\chat\AI231_ME2`.)
+  The handover is: this entry + PLAN.md
   decisions + HANDOVER.md (state of the world: what's done, what's running,
   what's next, gotchas) + AGENTS.md ground-truth update. Commit + push so the
   session can verify via `git log` that it's on the same page.
