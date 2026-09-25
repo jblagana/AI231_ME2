@@ -29,9 +29,11 @@ clarifications). Specs live at `C:\Users\Jan\Muji\ai231_me2_specs.md`.
   protocol is waiting on input).
 
 ### Running right now
-- **TTS dataset generation, background pid 15868** (`python src/make_dataset.py`),
-  started 16:08. Progress in `tts_full.log` (last seen: 3,900/6,900 clips,
-  ETA ~2h). Output → `data/raw/`. Check: `Get-Content tts_full.log -Tail 3`.
+- **TTS dataset generation, background pid 10692** (`python src/make_dataset.py`),
+  restarted 2026-09-25 ~19:05 after the first run (pid 15868) died on a DNS
+  failure at 18:15 (7,576/13,800 clips). Progress in `tts_full2.log`
+  (manifest is the truth: `data/raw/manifest.jsonl`). Check:
+  `Get-Content tts_full2.log -Tail 3`.
   If the process is dead on resume, re-run `python src/make_dataset.py` —
   it skips existing files, so resume is safe.
 - **Task #10** on the boss's local task list: train v1 when data lands,
@@ -102,7 +104,10 @@ clarifications). Specs live at `C:\Users\Jan\Muji\ai231_me2_specs.md`.
 
 ## Ops quick-ref
 ```
-python src/make_dataset.py            # TTS gen (resumable, skips existing)
+python src/make_dataset.py            # TTS gen (resumable — fixed 2026-09-25:
+                                      # manifest append + skip-done; was NOT resumable
+                                      # before that fix; first run died 18:15 on a
+                                      # DNS failure, restarted as pid 10692 → tts_full2.log)
 python src/train.py --smoke           # fast training path check
 python src/train.py                   # full train v1
 Get-Content tts_full.log -Tail 3      # dataset gen progress

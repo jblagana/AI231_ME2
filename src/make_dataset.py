@@ -86,9 +86,25 @@ async def main():
     if args.limit_voices:
         splits = {k: v[: args.limit_voices] for k, v in splits.items()}
 
+    # Resumable: if a manifest exists, load it and skip already-generated
+    # files (restart-safe; the old "w" mode wiped it and forced full regen).
     manifest = out / "manifest.jsonl"
-    n_ok = n_fail = 0
-    with manifest.open("w", encoding="utf-8") as mf:
+    done = set()
+    if manifest.exists():
+        with manifest.open("r", encoding="utf-8") as mf:
+            for line in mf:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    e = json.loads(line)
+                except json.JSONDecodeError:
+                    continue  # torn last line from a crash — drop it
+                done.add(e["file"])
+        print(f"RESUME: {len(done)} clips already in manifest, skipping them")
+    n_ok = len(done)
+    n_fail = 0
+    with manifest.open("a", encoding="utf-8") as mf:
         for split, voices in splits.items():
             for cls in CLASSES:
                 d = out / split / cls
@@ -100,6 +116,8 @@ async def main():
                             for _ in range(args.per_combo):
                                 i += 1
                                 p = d / f"{i:05d}.mp3"
+                                if f"{split}/{cls}/{p.name}" in done:
+                                    continue  # already generated (resume)
                                 ok = await synth_one(voice, phrase, rate, p)
                                 if ok:
                                     n_ok += 1

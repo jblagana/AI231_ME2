@@ -1,0 +1,12 @@
+RESUME: 7574 clips already in manifest, skipping them
+[train] play_music: 600 clips (cum ok=7574 fail=0)
+[train] ask_question: 700 clips (cum ok=7574 fail=0)
+[train] control_lights: 800 clips (cum ok=7574 fail=0)
+[train] dim_lights: 600 clips (cum ok=7574 fail=0)
+[train] set_timer: 600 clips (cum ok=7574 fail=0)
+[train] set_alarm: 600 clips (cum ok=7574 fail=0)
+[train] set_temperature: 600 clips (cum ok=7574 fail=0)
+[train] media_control: 1000 clips (cum ok=7574 fail=0)
+[train] set_reminder: 600 clips (cum ok=7576 fail=0)
+[train] make_call: 800 clips (cum ok=7576 fail=0)
+[eval] play_music: 600 clips (cum ok=7576 fail=0)

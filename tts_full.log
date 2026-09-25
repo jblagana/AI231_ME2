@@ -4,3 +4,8 @@
 [train] dim_lights: 600 clips (cum ok=2700 fail=0)
 [train] set_timer: 600 clips (cum ok=3300 fail=0)
 [train] set_alarm: 600 clips (cum ok=3900 fail=0)
+[train] set_temperature: 600 clips (cum ok=4500 fail=0)
+[train] media_control: 1000 clips (cum ok=5500 fail=0)
+[train] set_reminder: 600 clips (cum ok=6098 fail=2)
+[train] make_call: 800 clips (cum ok=6898 fail=2)
+[eval] play_music: 600 clips (cum ok=7498 fail=2)

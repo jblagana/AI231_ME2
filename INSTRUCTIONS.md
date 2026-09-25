@@ -8,6 +8,22 @@ log update and before `git push`. `done` = **pushed to the remote repo**.
 
 ---
 
+## 2026-09-25 — "work here" (session cwd = this repo)
+Status: in progress
+### Instruction (verbatim)
+> work here C:\Users\Jan\.cline\data\workspaces\chat\AI231_ME2
+### Interpretation (agent — user may edit this section)
+- Boss is working out of this repo in the AI231 ME2 session (post-handover).
+- First action: check state of the background TTS gen from the handover.
+  Found: **gen process (pid 15868) is dead** — log stopped at 18:15
+  (`[eval] play_music: 600 clips, cum ok=7498`), manifest has 7,574 entries,
+  ~58% of the ~12.9k target. Also found the handover's "resumable, skips
+  existing" claim was **wrong** — make_dataset.py rewrites the manifest in
+  `"w"` mode and re-synthesizes everything. Fixing: make it actually
+  resumable (load manifest, skip done files, append mode), then restart gen.
+
+---
+
 ## 2026-09-25 — Handover to 'AI231 ME2' session + boss clarifications
 Status: in progress (docs being updated; dataset gen still running)
 Progress: 60% — ETA ~30 min (docs + push; TTS gen continues in background)
