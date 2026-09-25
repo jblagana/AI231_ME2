@@ -28,8 +28,9 @@ Progress: ~40% of Day-1 milestone
   Telegram group (boss has been silent there 2 weeks — his 2-min unblock).
 
 ## 2026-09-25 — Repo created
-Status: done
+Status: done (pushed)
 - Local: `C:\Users\Jan\.cline\data\workspaces\chat\AI231_ME2` (git init, main)
-- Remote: jblagana/AI231_ME2 (public)
+- Remote: jblagana/AI231_ME2 (public, created via API 2026-09-25)
+- First push: `aeef261` (Day-1 scaffolding) + BENCHMARK.md
 - Layout: `src/` (commands, make_dataset, model, train), `notebooks/`, `data/`
   (gitignored), `runs/` (gitignored checkpoints)
