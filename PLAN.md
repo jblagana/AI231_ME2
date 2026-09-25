@@ -10,8 +10,15 @@
   Parametric commands (dim to X%, timer for X min, alarm, temperature, remind, call)
   are **detected by class only** — slot values are out of scope for a tiny VCM
   (spec says "understand the most common commands"; detection is the defensible read).
-- **Export:** PyTorch → ONNX → (Pi demo) — ONNX Runtime on RPi is the portable path.
-- **No wake word** — not in the spec; note as future work / group-protocol question.
+- **Wake word: IN SCOPE** (boss ratified 2026-09-25, post-spec) — separate 2-class
+  gate (wake/no-wake) in front of the VCM; matches the 09-22 group protocol (wake
+  required while music plays, volume drops to 5%). Implementation lean: tiny 2-class
+  CNN reusing the TTS pipeline (fully on-device, no vendor dep) vs Porcupine (free
+  personal license, custom wake word) — boss to veto. Benchmark inclusion TBD
+  (09-24 group protocol doesn't mention it — flag in BENCHMARK.md as optional).
+- **Export:** PyTorch → ONNX → ONNX Runtime (CPU EP, ARM64) on the Pi.
+  **TensorRT: NO** — no ARM64/RPi build (x86 + Jetson only); irrelevant at 94K
+  params anyway (~1ms/clip). Single inference artifact = ONNX.
 
 ## Dataset (collective task — our contribution)
 - **TTS synthesis** (edge-tts, many voices × speeds) — constraint (7) is on inference,
@@ -37,7 +44,7 @@ Per the 09-24 group protocol (N non-owner evaluators, each command × N, logs re
 | 09-25 (Fri) | Scaffolding, env, TTS dataset gen running, model v1 written |
 | 09-26 (Sat) | First train on generated data, sanity metrics |
 | 09-27 (Sun) | Augmentation pass, retrain, benchmark harness |
-| 09-28–29 | RPi demo (mic → VCM → mock device), collect classmate eval data |
+| 09-28–29 | RPi demo (mic → wake gate → VCM → API-UI mock device), collect classmate eval data |
 | 09-30 | Final train on pooled collective dataset, final numbers |
 | 10-01–02 | Demo polish, writeup, buffer |
 | 10-03 | **Deadline** |
@@ -47,9 +54,30 @@ Per the 09-24 group protocol (N non-owner evaluators, each command × N, logs re
   ai231-me2 group early (boss silent in group for 2 weeks; this is the 2-min unblock).
 - **TTS voice uniformity** — synthetic speech is cleaner than real; mitigated by
   noise augmentation + the live-eval benchmark item.
-- **RPi availability** — spec allows sharing devices; confirm with group.
+- **RPi availability** — RESOLVED (2026-09-25): boss has an **RPi 4B 8GB +
+  64GB SanDisk Ultra SD + case with fan**. The SD card is the demo bottleneck
+  (not RAM): audio streaming + ONNX Runtime + demo web app all fit easily in
+  8GB; SD wear from continuous mic writes is the watch-item (use tmpfs for
+  ring buffer, minimal logging).
+- **HPC** — boss has access (credentials not yet shared). Local CPU torch is
+  fine for 94K params; HPC is for the Day-5 final train on the pooled
+  collective dataset if it's big. Ask boss for endpoint/creds when needed.
+
+## Demo (task 5) — API-UI mock device (ratified 2026-09-25)
+One local web app: mic → wake gate → VCM → `POST /device/command` → mock
+device state + status page. All free, no hardware beyond the Pi:
+- **dim_lights** → mock light (brightness % slider) — boss's pick
+- **set_timer / set_alarm / set_reminder** → local timer/reminder engine (due-time + toast)
+- **set_temperature** → mock thermostat state
+- **play_music / media_control** → local audio player (pause/stop/next/volume)
+- **make_call** → mock dialer (shows number, no real call)
+- **ask_question** → weather/time via public API (note in writeup: "no cloud"
+  constrains VCM inference, not the action side)
 
 ## Decision log
 - 2026-09-25: repo created (local `C:\Users\Jan\.cline\data\workspaces\chat\AI231_ME2`,
   remote jblagana/AI231_ME2). TTS route + 10 classes + CNN architecture ratified.
   Parametric slots out of scope. No wake word.
+- 2026-09-25 (handover): wake word IN SCOPE (2-class gate, TBD vs Porcupine);
+  TensorRT rejected (no ARM64 build); hardware = RPi4B 8GB (SD card is the
+  bottleneck); HPC available for final train; API-UI mock-device demo ratified.

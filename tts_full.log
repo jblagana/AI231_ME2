@@ -1,0 +1,6 @@
+[train] play_music: 600 clips (cum ok=600 fail=0)
+[train] ask_question: 700 clips (cum ok=1300 fail=0)
+[train] control_lights: 800 clips (cum ok=2100 fail=0)
+[train] dim_lights: 600 clips (cum ok=2700 fail=0)
+[train] set_timer: 600 clips (cum ok=3300 fail=0)
+[train] set_alarm: 600 clips (cum ok=3900 fail=0)
