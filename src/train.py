@@ -105,6 +105,8 @@ def main():
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--out", default="runs/v1")
     ap.add_argument("--smoke", action="store_true")
+    ap.add_argument("--init-from", default=None,
+                    help="checkpoint to warm-start from (e.g. runs/v1/vcm_v1.pt)")
     args = ap.parse_args()
 
     root = Path(args.data)
@@ -122,6 +124,12 @@ def main():
     va = DataLoader(eval_ds, batch_size=args.batch, num_workers=0)
 
     m = VCM(len(CLASSES))
+    if args.init_from:
+        ckpt = Path(args.init_from)
+        if not ckpt.exists():
+            print(f"--init-from: {ckpt} not found"); return 2
+        m.load_state_dict(torch.load(ckpt, map_location="cpu"))
+        print(f"warm-start from {ckpt}")
     opt = torch.optim.AdamW(m.parameters(), lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
     lossf = nn.CrossEntropyLoss()
