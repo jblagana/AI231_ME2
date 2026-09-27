@@ -206,13 +206,15 @@ def main():
     tr = DataLoader(train_ds, batch_size=args.batch, shuffle=True, num_workers=0)
     va = DataLoader(eval_ds, batch_size=args.batch, num_workers=0)
 
-    m = VCM(len(CLASSES))
+    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    m = VCM(len(CLASSES)).to(dev)
     if args.init_from:
         ckpt = Path(args.init_from)
         if not ckpt.exists():
             print(f"--init-from: {ckpt} not found"); return 2
         m.load_state_dict(torch.load(ckpt, map_location="cpu"))
         print(f"warm-start from {ckpt}")
+    print(f"device: {dev}")
     opt = torch.optim.AdamW(m.parameters(), lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
     if args.class_weights:
@@ -239,6 +241,7 @@ def main():
         t0 = time.time()
         tot = cnt = 0
         for x, y in tr:
+            x, y = x.to(dev), y.to(dev)
             opt.zero_grad()
             loss = lossf(m(x), y)
             loss.backward()
@@ -251,6 +254,7 @@ def main():
         correct = total = 0
         with torch.no_grad():
             for x, y in va:
+                x, y = x.to(dev), y.to(dev)
                 pred = m(x).argmax(1)
                 correct += (pred == y).sum().item()
                 total += len(y)
