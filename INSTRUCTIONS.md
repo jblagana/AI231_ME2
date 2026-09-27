@@ -8,6 +8,33 @@ log update and before `git push`. `done` = **pushed to the remote repo**.
 
 ---
 
+## 2026-09-27 — "log those reasons on the whys of our architecture, and maybe add that power consumption test"
+Status: done (WHYS.md created + committed/pushed)
+### Instruction (verbatim)
+> so the gate is the model for wakeword and the vcm is the model for the command, got it. also log those reasons on the whys of our architecture, and maybe add that power consumption test to show the gate is really cheap compared to the vcm runs. ill be presenting the design/archi and method in class in 2slides and then a demo.
+### Interpretation (agent — user may edit this section)
+- Created `WHYS.md` — the "why" source of truth for the design/methodology
+  section of the writeup + class presentation. Entries (newest first):
+  (1) why the wake gate is a separate model, not a head on the VCM (4
+  reasons: run frequency, input windows, data scale, failure budgets);
+  (2) why plain CNN not CRNN (no sequence left after 3 maxpools, wrong
+  output shape for CTC, ARM-sequential-compute penalty, Pixel keyword-
+  spotting precedent; RNN flagged as slot-head fallback); (3) why parametric
+  commands are class-only in v1 + Tier-1 joint intent+slot head design
+  (finite slot vocab ~35 tokens, strictly additive, no collective conflict);
+  (4) why ONNX Runtime on the Pi (50MB vs 2GB, format not framework);
+  (5) why TTS not human recording; (6) why 10 classes as-is; (7) why wake
+  word in scope (09-22 group protocol).
+- Added **benchmark item 6 (proposed, pending boss OK to post to group):**
+  power draw — gate (continuous, idle audio) vs VCM (per wake event),
+  expected 10–100× cheaper, the quantified justification of the
+  bouncer/receptionist split. Method: Pi power-rail meter over a fixed
+  10-min script (N wake events + idle audio, both configs).
+- Boss is presenting design/archi + method in **2 slides + a demo** in class
+  (date TBC) — WHYS.md is the slide source.
+
+---
+
 ## 2026-09-25 — "work here" (session cwd = this repo)
 Status: in progress
 ### Instruction (verbatim)

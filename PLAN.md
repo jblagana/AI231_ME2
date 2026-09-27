@@ -37,6 +37,12 @@ Per the 09-24 group protocol (N non-owner evaluators, each command × N, logs re
 4. **Model size:** params + on-disk footprint (ONNX)
 5. **Task-completion rate** in the live demo (N evaluators, each command N times)
 6. **WER of the recognized command** (optional, only if we add a decoder)
+7. **Power draw — gate vs VCM** (proposed 2026-09-27, optional, differentiator):
+   average mW of (a) wake gate running continuously on idle audio vs (b) VCM
+   per wake event, over a fixed 10-min script (N wake events + idle audio,
+   both configs, Pi power-rail meter). Expected: gate ~10–100× cheaper per
+   unit time — the quantified justification of the bouncer/receptionist split
+   (see WHYS.md).
 
 ## Timeline
 | Day | Milestone |
