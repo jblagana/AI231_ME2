@@ -46,15 +46,37 @@ def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
     return logmel[..., :N_FRAMES]
 
 
+def resample_speed(wav: torch.Tensor, rate: float) -> torch.Tensor:
+    """(1, T) -> (1, round(T/rate)) at `rate`x speed, pure-torch linear
+    resample. ~50 ms/item vs ~3.7 s/item for torchaudio.functional.speed
+    (measured _probe_resample.py, 2026-09-27 — that one routes through the
+    broken torchcodec path too). For augmentation purposes a valid
+    time-stretch is all that's needed (probe: length exact, corr 1.0 at
+    rate=1.0, small deviations at 0.95/1.05 are the intended perturbation)."""
+    T = wav.shape[-1]
+    if rate == 1.0:
+        return wav
+    T2 = int(round(T / rate))
+    if T2 <= 1:
+        return wav
+    return nn.functional.interpolate(
+        wav.unsqueeze(1), size=T2, mode="linear",
+        align_corners=False).squeeze(1)
+
+
 def load_wav(p: Path) -> torch.Tensor:
-    # torchaudio 2.11 in this venv routes decoding through torchcodec, whose
-    # DLL install is broken here — decode via the imageio_ffmpeg binary instead
-    # (same result: (1, T) @16k mono float32). Revert to torchaudio.load once
-    # a working codec (soundfile/torchcodec) is installed.
-    wav = load_mp3(p)
-    if wav.shape[0] > 1:
-        wav = wav.mean(0, keepdim=True)
-    return wav
+    # Prefer pre-decoded .raw siblings (src/decode_wav.py): np.fromfile on
+    # raw s16le is ~4 ms/item vs ~0.19 s/item for the per-file ffmpeg
+    # subprocess (measured _probe_throughput.py / _probe_wavload.py,
+    # 2026-09-27). torchaudio.load is NOT usable in this venv (torchcodec
+    # ImportError, measured _probe_wavload.py). Fall back to the ffmpeg mp3
+    # decode if no .raw exists yet.
+    raw_p = p.with_suffix(".raw")
+    if raw_p.exists():
+        arr = np.fromfile(str(raw_p), dtype=np.int16).astype(np.float32)
+        arr /= 32768.0
+        return torch.from_numpy(arr).unsqueeze(0)
+    return load_mp3(p)  # imageio_ffmpeg binary (see gen_site_assets)
 
 
 class VCMDataset(Dataset):
@@ -83,9 +105,10 @@ class VCMDataset(Dataset):
         p, cls = self.items[i]
         wav = load_wav(p)
         if self.augment:
-            # speed jitter (torchaudio 2.11: speed(wav, orig_freq, factor))
+            # speed jitter — pure-torch resample (torchaudio.functional.speed
+            # is ~3.7 s/item in this venv, measured _probe_resample.py)
             rate = random.uniform(0.95, 1.05)
-            wav = torchaudio.functional.speed(wav, SR, rate)[0]
+            wav = resample_speed(wav, rate)
             # random gain
             gain = random.uniform(-6.0, 6.0) / 20.0 * 10
             wav = wav * (10 ** (gain / 20.0))
