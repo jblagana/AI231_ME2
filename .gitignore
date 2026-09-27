@@ -6,3 +6,24 @@ __pycache__/
 *.pt
 *.onnx
 .ipynb_checkpoints/
+
+# probes / debug / build scratch (2026-09-27)
+_probe*.py
+_probe*.log
+_diag*.py
+_diag*.log
+_decode*.log
+_smoke*.log
+_smoke*.log
+_build_nb.py
+_build_nb.log
+_build_nb_err.log
+pip_nb*.log
+pip_ipyk*.log
+train_v1b.log
+train_v1*.log
+tts_full*.log
+smoke_tts*.log
+pip_install*.log
+pip_torch*.log
+runs/

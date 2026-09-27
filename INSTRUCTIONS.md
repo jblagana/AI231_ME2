@@ -8,6 +8,50 @@ log update and before `git push`. `done` = **pushed to the remote repo**.
 
 ---
 
+## 2026-09-27 — "make sure u log the process in a python notebook so i can check it while ur working. also include there the issues u encountered and the fix or workaround"
+Status: in progress — live notebook at notebooks/vcm_v1_training.ipynb (diagnosis + issues + fixes + train)
+### Instruction (verbatim)
+> make sure u log the process in a python notebook so i can check it while ur working. also include there the issues u encountered and the fix or workaround
+### Interpretation (agent — user may edit this section)
+- Boss wants a live, checkable notebook of the whole process: issues
+  encountered, fixes/workarounds, and the training run — readable while
+  muji works. Notebook: `notebooks/vcm_v1_training.ipynb`, executed
+  cell-by-cell so outputs land incrementally (boss can open it mid-run).
+- Content: (1) env + issues log (torchcodec/broken torchaudio, slow
+  decode path, v1 collapse); (2) diagnosis (aug cosine-sim probe,
+  no-aug 3-ep climb); (3) speed-jitter root cause + fix; (4) validation;
+  (5) full 15-epoch train (background process, progress cell re-runnable).
+
+---
+
+## 2026-09-27 — "now back to work" (resume main agenda: AI231 ME2 VCM training)
+Status: in progress — fast data path shipped, full train starting after batch decode
+### Instruction (verbatim)
+> now back to work
+### Interpretation (agent — user may edit this section)
+- Resumed the main agenda (task 10: train VCM v1). Found the 15-epoch train
+  that was launched earlier **was running on the slow data path**:
+  probe-measured per-item ffmpeg mp3 decode = 0.19 s AND
+  torchaudio.functional.speed (speed jitter) = 3.7 s/item in this venv
+  (both route through the broken torchcodec path; torchaudio.load also
+  ImportErrors — all three measured in `_probe_*.py`, 2026-09-27).
+  Extrapolation: ~450 min/epoch → ~112 h for 15 epochs. Killed it
+  (pid 19932) rather than let it grind for 5 days.
+- Shipped the fast data path (commit `086e288`):
+  - `src/decode_wav.py` — one-time batch mp3 → `.raw` (16 kHz mono s16le,
+    no header) at ~14 files/s (~16 min for 13,757 files), idempotent.
+  - `train.load_wav` — `np.fromfile` on `.raw` (~4 ms/item measured),
+    ffmpeg fallback if `.raw` missing.
+  - `train.resample_speed` — pure-torch linear resample for the speed
+    jitter (~50 ms/item; length exact, corr 1.0 at rate 1.0).
+- New expected epoch time: ~10–15 min (data ~25 min worst case + forward/
+  backward on CPU) — will be confirmed by the first real epoch's `sec` in
+  history.json. 15 epochs ≈ 3–4 h, not 112 h.
+- Sequence: batch decode (running, `_decode_full.log`) → `--smoke` on the
+  fast path → full 15-epoch train → eval acc on the speaker-disjoint set.
+
+---
+
 ## 2026-09-27 — "the 2class slides is for everything about this project fyi, also i want to see visually (maybe a website) the datasets and the things done and still to do and the datasets i wanna see them or access them there or a few of them"
 Status: done (site/ dashboard + committed/pushed)
 ### Instruction (verbatim)

@@ -48,20 +48,29 @@ def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
 
 def resample_speed(wav: torch.Tensor, rate: float) -> torch.Tensor:
     """(1, T) -> (1, round(T/rate)) at `rate`x speed, pure-torch linear
-    resample. ~50 ms/item vs ~3.7 s/item for torchaudio.functional.speed
+    resample. ~1-2 ms/item steady-state vs ~3.7 s/item for
+    torchaudio.functional.speed
     (measured _probe_resample.py, 2026-09-27 — that one routes through the
-    broken torchcodec path too). For augmentation purposes a valid
-    time-stretch is all that's needed (probe: length exact, corr 1.0 at
-    rate=1.0, small deviations at 0.95/1.05 are the intended perturbation)."""
+    broken torchcodec path too).
+
+    BUGFIX 2026-09-27 (v1 collapse): the first version used
+    F.interpolate(size=T2, mode='linear'), which maps the DESTINATION grid
+    0..T2-1 onto the SOURCE grid 0..T-1 — i.e. it stretched/compressed
+    relative to the original LENGTH, so at rate 0.95 the output was longer
+    and slower, phase-drifting the whole clip (cosine corr vs clean ~0.04
+    on real clips; v1 trained to 0.176 acc = chance). Correct time-stretch:
+    sample the source at `rate`x (source grid 0..T/rate-1). Verified:
+    cos_corr 0.99999 on a chirp and >0.99 on 12 real clips, ~1-2 ms/item."""
     T = wav.shape[-1]
     if rate == 1.0:
         return wav
     T2 = int(round(T / rate))
     if T2 <= 1:
         return wav
-    return nn.functional.interpolate(
-        wav.unsqueeze(1), size=T2, mode="linear",
-        align_corners=False).squeeze(1)
+    src = torch.linspace(0.0, T / rate - 1, T2)
+    i0 = src.long().clamp(max=T - 1)
+    frac = (src - src.floor()).float()
+    return wav[..., i0] * (1 - frac) + wav[..., (i0 + 1).clamp(max=T - 1)] * frac
 
 
 def load_wav(p: Path) -> torch.Tensor:
