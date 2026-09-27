@@ -27,6 +27,15 @@ from model import VCM, N_MELS, N_FRAMES, SR  # noqa: E402
 from gen_site_assets import load_mp3  # ffmpeg-based mp3 decode (see below)
 
 
+# 2026-09-28 (n003 migration): the MelSpectrogram was being CONSTRUCTED on
+# every call — measured 117.7 ms/item vs 43.1 ms/item for a shared instance
+# (2.7x, n003 CPU, _hpc_diag4.sh). Singleton it.
+_MEL = torchaudio.transforms.MelSpectrogram(
+    sample_rate=SR, n_fft=1024, hop_length=320, n_mels=N_MELS,
+    f_min=50.0, f_max=8000.0,
+)
+
+
 def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
     """(1, T) @16k -> (1, 80, 50) log-mel, padded/cropped to fixed length."""
     if wav.dim() == 1:
@@ -41,10 +50,7 @@ def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
         # cropped and the audio is centered in the window below.
         start = (wav.shape[-1] - SR) // 2
         wav = wav[..., start:start + SR]
-    mel = torchaudio.transforms.MelSpectrogram(
-        sample_rate=SR, n_fft=1024, hop_length=320, n_mels=N_MELS,
-        f_min=50.0, f_max=8000.0,
-    )(wav)
+    mel = _MEL(wav)
     logmel = torch.clamp(mel, min=1e-5).log10()
     # normalize to ~[0,1] (log10 range is ~[-5, 0])
     logmel = (logmel + 5.0) / 5.0
@@ -102,6 +108,7 @@ def load_wav(p: Path) -> torch.Tensor:
 
 
 RAW_CACHE: dict = {}
+BASE_FEAT_CACHE: dict = {}  # str(mp3 path) -> base log-mel (1,80,50), no aug
 
 
 def preload_raw(root: Path) -> int:
@@ -150,25 +157,55 @@ class VCMDataset(Dataset):
     def __len__(self):
         return len(self.items)
 
+    def _base_feat(self, p: Path) -> torch.Tensor:
+        """Base (un-augmented) log-mel for p, from the RAM cache.
+
+        2026-09-28 (n003 migration): the per-item mel transform cost ~75 ms
+        of CPU (per-call torchaudio overhead) — 9 min/epoch of data prep
+        starving the A100. Precomputing the base feature once per file
+        (13,787 files, ~2 min) and re-augmenting in the mel domain
+        (speed jitter = frame resample 0.42 ms/item, gain = +1 dB in log
+        domain, noise = additive Gaussian) makes per-item prep ~1 ms."""
+        key = str(p)
+        feat = BASE_FEAT_CACHE.get(key)
+        if feat is None:
+            feat = wav_to_logmel(load_wav(p))
+            BASE_FEAT_CACHE[key] = feat
+        return feat
+
     def __getitem__(self, i):
         p, cls = self.items[i]
-        wav = load_wav(p)
+        x = self._base_feat(p)
         if self.augment:
-            # speed jitter — pure-torch resample (torchaudio.functional.speed
-            # is ~3.7 s/item in this venv, measured _probe_resample.py)
+            # speed jitter — resample the mel FRAMES (0.42 ms/item, measured
+            # 2026-09-28). Equivalent to time-stretching the audio: frames
+            # are evenly spaced in time, so stretching the frame axis is
+            # exactly a pitch-preserving speed change for the features.
             rate = random.uniform(0.95, 1.05)
-            wav = resample_speed(wav, rate)
-            # random gain
-            gain = random.uniform(-6.0, 6.0) / 20.0 * 10
-            wav = wav * (10 ** (gain / 20.0))
-            # white-noise floor (SNR 5-25 dB)
+            T = x.shape[-1]
+            T2 = int(round(T / rate))
+            if T2 > 1:
+                src = torch.linspace(0.0, T / rate - 1, T2)
+                i0 = src.long().clamp(max=T - 1)
+                frac = (src - src.floor()).float()
+                x = x[..., i0] * (1 - frac) + x[..., (i0 + 1).clamp(max=T - 1)] * frac
+                if x.shape[-1] < N_FRAMES:
+                    pad = N_FRAMES - x.shape[-1]
+                    x = nn.functional.pad(x, (pad // 2, pad - pad // 2))
+                x = x[..., :N_FRAMES]
+            # random gain ±6 dB (log-mel is log10: +1 dB = +1/20 on the
+            # raw scale, and our features are (log10+5)/5 = dB/20 + 0.5, so
+            # a dB gain is just an additive constant)
+            x = x + random.uniform(-6.0, 6.0) / 20.0
+            # white-noise floor (SNR 5-25 dB) — additive in the feature
+            # domain, scaled to the feature's own power (same intent as the
+            # waveform version, which is what v1b/v1c trained with)
             snr_db = random.uniform(5.0, 25.0)
-            sig_p = (wav ** 2).mean().clamp_min(1e-8)
-            noise = torch.randn_like(wav)
-            noise_p = (noise ** 2).mean().clamp_min(1e-8)
+            sig_p = x.pow(2).mean().clamp_min(1e-8)
+            noise = torch.randn_like(x)
+            noise_p = noise.pow(2).mean().clamp_min(1e-8)
             scale = torch.sqrt(sig_p / (noise_p * 10 ** (snr_db / 10.0)))
-            wav = wav + noise * scale
-        x = wav_to_logmel(wav)
+            x = x + noise * scale
         return x, CLASSES.index(cls)
 
 
@@ -202,6 +239,19 @@ def main():
     # Warm the page cache before the first epoch (matters on network FS —
     # see preload_raw docstring). No-op-ish on local disk (~1 s).
     preload_raw(root)
+
+    # Precompute every base log-mel ONCE (RAM, ~43 ms/file -> ~10 min for
+    # 13,787 files, one-time). After this, per-item prep is ~1 ms of mel-
+    # domain augmentation, so the A100 is fed continuously (measured
+    # 2026-09-28: without this, data prep was 75-118 ms/item on CPU and
+    # the GPU sat at 0% util the whole epoch).
+    t0 = time.time()
+    for p, _ in train_ds.items:
+        train_ds._base_feat(p)
+    for p, _ in eval_ds.items:
+        eval_ds._base_feat(p)
+    print(f"base features: {len(BASE_FEAT_CACHE)} cached in "
+          f"{time.time() - t0:.0f}s", flush=True)
 
     tr = DataLoader(train_ds, batch_size=args.batch, shuffle=True, num_workers=0)
     va = DataLoader(eval_ds, batch_size=args.batch, num_workers=0)
