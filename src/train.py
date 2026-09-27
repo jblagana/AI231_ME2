@@ -153,6 +153,10 @@ def main():
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--init-from", default=None,
                     help="checkpoint to warm-start from (e.g. runs/v1/vcm_v1.pt)")
+    ap.add_argument("--class-weights", action="store_true",
+                    help="inverse-frequency class weights on CrossEntropy "
+                         "(v1d: media_control 2000 vs dim_lights 1194 train "
+                         "clips skewed v1c toward the big class)")
     args = ap.parse_args()
 
     root = Path(args.data)
@@ -178,7 +182,21 @@ def main():
         print(f"warm-start from {ckpt}")
     opt = torch.optim.AdamW(m.parameters(), lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
-    lossf = nn.CrossEntropyLoss()
+    if args.class_weights:
+        # inverse-frequency weights: w_c = N / (C * n_c), computed on the
+        # TRAIN split (eval must stay untouched). Normalized so the mean
+        # weight is 1 (loss scale unchanged, only per-class emphasis shifts).
+        counts = torch.zeros(len(CLASSES))
+        for _, cls in train_ds.items:
+            counts[CLASSES.index(cls)] += 1
+        n = len(train_ds)
+        w = n / (len(CLASSES) * counts)
+        w = w / w.mean()
+        print("class weights:", {CLASSES[i]: round(float(w[i]), 3)
+                                 for i in range(len(CLASSES))})
+        lossf = nn.CrossEntropyLoss(weight=w)
+    else:
+        lossf = nn.CrossEntropyLoss()
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
