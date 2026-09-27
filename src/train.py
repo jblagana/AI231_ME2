@@ -24,6 +24,7 @@ from torch.utils.data import DataLoader, Dataset
 sys.path.insert(0, str(Path(__file__).parent))
 from commands import CLASSES  # noqa: E402
 from model import VCM, N_MELS, N_FRAMES, SR  # noqa: E402
+from gen_site_assets import load_mp3  # ffmpeg-based mp3 decode (see below)
 
 
 def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
@@ -46,9 +47,11 @@ def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
 
 
 def load_wav(p: Path) -> torch.Tensor:
-    wav, sr = torchaudio.load(str(p))
-    if sr != SR:
-        wav = torchaudio.functional.resample(wav, sr, SR)
+    # torchaudio 2.11 in this venv routes decoding through torchcodec, whose
+    # DLL install is broken here — decode via the imageio_ffmpeg binary instead
+    # (same result: (1, T) @16k mono float32). Revert to torchaudio.load once
+    # a working codec (soundfile/torchcodec) is installed.
+    wav = load_mp3(p)
     if wav.shape[0] > 1:
         wav = wav.mean(0, keepdim=True)
     return wav
@@ -80,9 +83,9 @@ class VCMDataset(Dataset):
         p, cls = self.items[i]
         wav = load_wav(p)
         if self.augment:
-            # speed jitter
+            # speed jitter (torchaudio 2.11: speed(wav, orig_freq, factor))
             rate = random.uniform(0.95, 1.05)
-            wav = torchaudio.functional.speed(wav, SR, SR, rate)
+            wav = torchaudio.functional.speed(wav, SR, rate)[0]
             # random gain
             gain = random.uniform(-6.0, 6.0) / 20.0 * 10
             wav = wav * (10 ** (gain / 20.0))

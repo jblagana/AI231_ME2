@@ -8,6 +8,40 @@ log update and before `git push`. `done` = **pushed to the remote repo**.
 
 ---
 
+## 2026-09-27 — "the 2class slides is for everything about this project fyi, also i want to see visually (maybe a website) the datasets and the things done and still to do and the datasets i wanna see them or access them there or a few of them"
+Status: done (site/ dashboard + committed/pushed)
+### Instruction (verbatim)
+> the 2class slides is for everything about this project fyi, also i want to see visually (maybe a website) the datasets and the things done and still to do and the datasets i wanna see them or access them there or a few of them
+### Interpretation (agent — user may edit this section)
+- Built `site/` — a self-contained static dashboard (vanilla HTML/CSS/JS, no
+  fetch — works from file:// and the muji preview endpoint). Sections:
+  at-a-glance stats (13,787 clips, 10 classes, 94K params, 40 voices,
+  80×50 input, ~ms Pi inference), architecture flow diagram
+  (mic → wake gate → VCM → mock device) with the three headline "why"
+  callouts (separate gate / CNN not CRNN / ONNX), timeline with done/
+  today/next status, dataset stats + **30 playable samples** (3 per class,
+  20 distinct eval-split voices rotated by class index, each with an
+  audio player + log-mel spectrogram PNG rendered with the SAME feature
+  pipeline as train.py — 1 s window, 80 mel × 50 frames), and all 7
+  WHYS.md entries rendered slide-ready.
+- `src/gen_site_assets.py` — regenerates all site assets from
+  `data/raw/manifest.jsonl` (eval split only — model never trains on them):
+  copies 30 mp3s, renders 30 spectrograms, inlines samples.json into
+  index.html from `index_template.html` (the `/*__SAMPLES__*/` marker).
+  Re-run after augmentation to refresh samples.
+- `src/train.py` fixes (the venv's torchaudio 2.11 routes all decoding
+  through torchcodec, whose DLL install is broken — verified: `train.py
+  --smoke` crashed on the first load): `load_wav` now decodes via the
+  imageio_ffmpeg binary (subprocess, `-ar 16000 -ac 1 -f s16le`); speed
+  jitter updated to the 2.11 `speed(wav, orig_freq, factor)` signature.
+  Smoke train passes (1 epoch, 64 train / 32 eval items, acc 0.125 =
+  chance-level as expected for 1 epoch).
+- venv: `pip install imageio-ffmpeg matplotlib` (torchcodec installed then
+  removed — broken DLL; left a note to revert load_wav once a working
+  codec lands).
+
+---
+
 ## 2026-09-27 — "log those reasons on the whys of our architecture, and maybe add that power consumption test"
 Status: done (WHYS.md created + committed/pushed)
 ### Instruction (verbatim)

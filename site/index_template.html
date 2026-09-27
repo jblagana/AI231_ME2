@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VCM — AI231 ME2 · Project Dashboard</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#121722; --panel2:#0f141e; --line:#1f2735;
+    --txt:#d7dde8; --dim:#8a94a6; --acc:#4cc38a; --acc2:#5aa9ff;
+    --warn:#e8b34b; --bad:#e06c75; --chip:#1a2230;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:15px/1.55 -apple-system,"Segoe UI",Roboto,sans-serif}
+  header{padding:28px 32px 18px;border-bottom:1px solid var(--line)}
+  h1{margin:0 0 4px;font-size:22px;letter-spacing:.3px}
+  h1 small{color:var(--dim);font-weight:400;font-size:14px}
+  .meta{color:var(--dim);font-size:13px}
+  nav{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  nav a{color:var(--acc2);text-decoration:none;font-size:13px;padding:5px 12px;
+        border:1px solid var(--line);border-radius:99px;background:var(--chip)}
+  nav a:hover{border-color:var(--acc2)}
+  main{max-width:1100px;margin:0 auto;padding:24px 32px 80px}
+  section{margin-bottom:44px}
+  h2{font-size:17px;margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line);
+     color:var(--txt)}
+  h2 .tag{font-size:11px;color:var(--dim);font-weight:400;margin-left:10px}
+  /* hero stats */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .stat b{display:block;font-size:24px;color:var(--acc)}
+  .stat span{font-size:12px;color:var(--dim)}
+  /* architecture diagram */
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:8px 0 4px}
+  .node{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:12px 14px;min-width:150px;flex:1}
+  .node h3{margin:0 0 4px;font-size:13px;color:var(--acc)}
+  .node p{margin:0;font-size:12px;color:var(--dim)}
+  .arrow{display:flex;align-items:center;padding:0 10px;color:var(--dim);font-size:18px}
+  .gate{border-color:var(--acc)}
+  .why{background:var(--panel2);border-left:3px solid var(--acc);border-radius:0 8px 8px 0;
+       padding:10px 14px;margin:10px 0;font-size:13px;color:var(--txt)}
+  .why b{color:var(--acc)}
+  /* timeline */
+  .tl{list-style:none;margin:0;padding:0}
+  .tl li{display:grid;grid-template-columns:110px 1fr 90px;gap:12px;padding:9px 0;
+         border-bottom:1px solid var(--line);font-size:14px;align-items:center}
+  .tl .d{color:var(--dim);font-size:13px}
+  .st{font-size:11px;padding:3px 10px;border-radius:99px;text-align:center;justify-self:end}
+  .st.done{background:#123527;color:var(--acc);border:1px solid #1d5c40}
+  .st.now{background:#3a2f14;color:var(--warn);border:1px solid #6b5518}
+  .st.next{background:#14243a;color:var(--acc2);border:1px solid #274b7a}
+  /* dataset grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .card h3{margin:0;padding:10px 14px;font-size:13px;color:var(--acc2);
+           border-bottom:1px solid var(--line);display:flex;justify-content:space-between}
+  .card h3 span{color:var(--dim);font-weight:400;font-size:12px}
+  .card img{width:100%;display:block;background:#000}
+  .card .row{display:flex;gap:8px;padding:10px 14px;align-items:center}
+  .card .row audio{height:34px;flex:1;min-width:0}
+  .card .phrase{font-size:12px;color:var(--dim);padding:0 14px 12px}
+  .card .phrase code{color:var(--txt)}
+  /* why list */
+  .whyitem{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+           padding:14px 16px;margin-bottom:12px}
+  .whyitem h3{margin:0 0 6px;font-size:14px}
+  .whyitem h3 .d{color:var(--dim);font-size:11px;font-weight:400;margin-left:8px}
+  .whyitem p{margin:0;font-size:13px;color:var(--txt)}
+  .whyitem .rej{color:var(--dim);font-size:12px;margin-top:6px}
+  footer{max-width:1100px;margin:0 auto;padding:0 32px 40px;color:var(--dim);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>VCM — Voice Command Model <small>· AI231 ME2 · on-device, 10 classes, 94K params</small></h1>
+  <div class="meta">Deadline Sat 2026-10-03 · RPi 4B 8GB · PyTorch → ONNX · dataset: edge-tts, speaker-disjoint</div>
+  <nav>
+    <a href="#arch">Architecture</a>
+    <a href="#timeline">Timeline</a>
+    <a href="#dataset">Dataset</a>
+    <a href="#whys">Design Whys</a>
+  </nav>
+</header>
+<main>
+
+<section id="overview">
+  <h2>At a glance</h2>
+  <div class="stats">
+    <div class="stat"><b>13,787</b><span>clips generated (13,800 target)</span></div>
+    <div class="stat"><b>10</b><span>command classes</span></div>
+    <div class="stat"><b>94K</b><span>model params (target &lt;1M)</span></div>
+    <div class="stat"><b>40</b><span>TTS voices (20 train / 20 eval, 0 overlap)</span></div>
+    <div class="stat"><b>80×50</b><span>log-mel input (1 s @ 16 kHz)</span></div>
+    <div class="stat"><b>~ms</b><span>inference on Pi (ONNX Runtime)</span></div>
+  </div>
+</section>
+
+<section id="arch">
+  <h2>Architecture <span class="tag">mic → gate → VCM → device</span></h2>
+  <div class="flow">
+    <div class="node"><h3>Microphone</h3><p>16 kHz, 1 s windows, 20 ms hop</p></div>
+    <div class="arrow">→</div>
+    <div class="node gate"><h3>Wake gate</h3><p>2-class CNN (wake / no-wake). Always on, tiny, conservative. Trains on ~1–2k clips.</p></div>
+    <div class="arrow">→ <span style="font-size:11px;color:var(--dim)">only if woken</span></div>
+    <div class="node"><h3>VCM (intent)</h3><p>3-conv-block CNN, 94K params → 10-way softmax. Tier-1 stretch: + slot head (36-way, joint CE loss).</p></div>
+    <div class="arrow">→</div>
+    <div class="node"><h3>Mock device</h3><p>POST /device/command → light / timer / thermostat / music / dialer</p></div>
+  </div>
+  <div class="why"><b>Why a separate gate, not a 3rd head on the VCM?</b> The wake question runs 100% of the time, the intent question only after a wake — merging them forces the full VCM backbone to run on every chunk all day, deleting the power-saving split. Also: different input windows (sliding vs post-wake), different data scale (1–2k vs 13.8k), different failure budgets (false wake = cheap, false intent = annoying). Full rationale: <a href="#whys" style="color:var(--acc2)">Design Whys ↓</a></div>
+  <div class="why"><b>Why plain CNN, not CRNN?</b> After 3 maxpools the time axis is 6 frames — no sequence left to read. Output is one label, not a sequence (CRNN/CTC exists for ASR). RNNs are sequential compute — the worst workload for the Pi's ARM cores. Google's own keyword-spotting model is the same architecture class. Documented fallback: a temporal variant for the <i>slot</i> head (position-sensitive), not the intent head.</div>
+  <div class="why"><b>Why ONNX on the Pi?</b> PyTorch is a ~2GB install with slow ARM kernels; ONNX Runtime is ~50MB with optimized ARM kernels — real on a 64GB SD. Same .onnx file runs on the Pi, dev machine, and web. TensorRT rejected: no ARM64 build.</div>
+</section>
+
+<section id="timeline">
+  <h2>Timeline <span class="tag">09-25 → 10-03</span></h2>
+  <ul class="tl">
+    <li><span class="d">09-25 (Fri)</span><span>Scaffolding, env, TTS dataset gen, model v1 written</span><span class="st done">done</span></li>
+    <li><span class="d">09-26 (Sat)</span><span>First train on generated data, sanity metrics</span><span class="st done">done</span></li>
+    <li><span class="d">09-27 (Sun)</span><span>Augmentation pass, retrain, benchmark harness</span><span class="st now">today</span></li>
+    <li><span class="d">09-28–29</span><span>RPi demo (mic → gate → VCM → mock device), collect classmate eval data</span><span class="st next">next</span></li>
+    <li><span class="d">09-30</span><span>Final train on pooled collective dataset, final numbers</span><span class="st next">next</span></li>
+    <li><span class="d">10-01–02</span><span>Demo polish, writeup, buffer</span><span class="st next">next</span></li>
+    <li><span class="d">10-03</span><span><b>Deadline</b></span><span class="st next">next</span></li>
+  </ul>
+</section>
+
+<section id="dataset">
+  <h2>Dataset <span class="tag">edge-tts · 13,787 clips · speaker-disjoint · 3 eval samples per class below</span></h2>
+  <div class="stats" style="margin-bottom:14px">
+    <div class="stat"><b>6,893</b><span>train clips (20 voices, never in eval)</span></div>
+    <div class="stat"><b>6,894</b><span>eval clips (20 voices, never in train)</span></div>
+    <div class="stat"><b>600–1000</b><span>clips per class</span></div>
+    <div class="stat"><b>3</b><span>speed variants per clip (−10% / −5% / +0%)</span></div>
+  </div>
+  <div class="grid" id="cards"><!-- filled by JS --></div>
+</section>
+
+<section id="whys">
+  <h2>Design Whys <span class="tag">from WHYS.md — slide-ready rationale</span></h2>
+  <div id="whylist"><!-- filled by JS --></div>
+</section>
+
+</main>
+<footer>
+  VCM project dashboard · AI231 ME2 · generated 2026-09-27 · samples are eval-split clips (model never trains on them)
+</footer>
+
+<script id="samples-data" type="application/json">
+/*__SAMPLES__*/
+</script>
+<script>
+const WHY = [
+  {d:"2026-09-27", t:"Wake gate is a separate model, not a head on the VCM",
+   p:"Four independent reasons: (1) run frequency — the wake question runs on every ~1 s chunk 100% of the time, the intent question only after a wake; merging them forces the full backbone to run all day, deleting the power split. (2) Different input windows — gate needs a sliding window, VCM needs the post-wake command window. (3) Different data scale — gate: ~1–2k clips (no-wake is a free catch-all of silence/music/speech); VCM: 13.8k. A shared backbone gets dragged toward the minority class. (4) Different failure budgets — false wake = one wasted VCM run (cheap); false intent = unwanted device action (annoying). One model, one loss, one threshold can't hold two risk profiles.",
+   r:"Also clears the terminology: head = a sub-network (FC layer); class = a category inside one head's output. '2-class gate' is one head with two answers."},
+  {d:"2026-09-27", t:"Plain CNN, not CRNN",
+   p:"By the time an RNN would sit, 3 maxpools have reduced 50 frames to 6 — no sequence left to read. The output is one class label, not a variable-length sequence (CRNN/CTC exists for ASR). RNNs are sequential compute, the worst workload for the Pi's ARM cores, and a GRU on 128-dim features is ~100K params — the whole current model added on top. Google's Pixel keyword-spotting model is the same architecture class.",
+   r:"Documented fallback: the Tier-1 slot head is position-sensitive (numbers land at the end of the utterance) — if plain-CNN slot accuracy disappoints, a temporal variant is the first fix, for the slot head only."},
+  {d:"2026-09-27", t:"Parametric commands: class-only in v1, joint slot head in Tier 1",
+   p:"The number space is practically finite — brightness {10…100 by 10}, timer minutes {1,2,5,10,15,30,60}, temps {18…28}, clock times — ~30–40 slot tokens, so it's a second classification problem, not regression or ASR. Tier 1 = second FC head on the same backbone, trained with summed cross-entropy; hundreds of extra params, data mostly free (relabel from phrase text), strictly additive over v1.",
+   r:"Rejected: sequential slot sub-classifier (more plumbing, no benefit) and ASR for slots (Vosk/Whisper-tiny — second model + memory, kills the 'one 94K-param model' story)."},
+  {d:"2026-09-27", t:"ONNX Runtime on the Pi (not PyTorch)",
+   p:"PyTorch on the Pi = ~2GB install, slow ARM kernels. ONNX Runtime = ~50MB wheel, optimized ARM kernels — a real difference on the 64GB SD (the demo bottleneck). ONNX is a format, not a framework: one file runs on the Pi, dev machine, and web. At 94K params the forward pass is single-digit ms.",
+   r:"TensorRT rejected: no ARM64/RPi build (x86 + Jetson only); irrelevant at 94K params anyway."},
+  {d:"2026-09-25", t:"TTS (edge-tts) instead of human recording",
+   p:"The spec's on-device constraint is on inference, not data generation. Human recording won't scale to ~10–20k clips in 7 days; TTS scales in an afternoon. Mitigations for synthetic uniformity: SNR 0–20 dB noise augmentation, speed jitter, speaker-disjoint split (prevents voice memorization), and the live human-eval benchmark item."},
+  {d:"2026-09-25", t:"10 classes as-is; 'play music' kept separate",
+   p:"The collective benchmark compares models on the same class list (09-24 group protocol) — deviating makes our numbers incomparable. 'Play music' starts playback; media_control controls it — distinct commands."},
+  {d:"2026-09-25", t:"Wake word in scope (boss-ratified post-spec)",
+   p:"The 09-22 group protocol requires it: wake word mandatory while music plays, volume drops to 5% during listening. Without a gate, the VCM would fire on ambient speech and music lyrics.",
+   r:"Implementation pending boss veto: tiny 2-class CNN reusing the TTS pipeline (no vendor dependency) vs Porcupine (free personal license, battle-tested, vendor dependency)."}
+];
+
+const items = JSON.parse(document.getElementById("samples-data").textContent);
+{
+  const grid = document.getElementById("cards");
+  items.forEach(it=>{
+    const c = document.createElement("div");
+    c.className = "card";
+    c.innerHTML =
+      `<h3>${it.class}<span>${it.voice}</span></h3>` +
+      `<img src="spectro_${it.stem}.png" alt="spectrogram" loading="lazy">` +
+      `<div class="row"><audio controls preload="none" src="samples/${it.stem}.mp3"></audio></div>` +
+      `<div class="phrase">"${it.phrase}"</div>`;
+    grid.appendChild(c);
+  });
+}
+
+const wl = document.getElementById("whylist");
+WHY.forEach(w=>{
+  const d = document.createElement("div");
+  d.className = "whyitem";
+  d.innerHTML = `<h3>${w.t}<span class="d">${w.d}</span></h3><p>${w.p}</p>` +
+    (w.r ? `<p class="rej">${w.r}</p>` : "");
+  wl.appendChild(d);
+});
+</script>
+</body>
+</html>

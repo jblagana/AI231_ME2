@@ -1,0 +1,182 @@
+[
+ {
+  "class": "ask_question",
+  "stem": "ask_question__00001",
+  "voice": "en-US-AndrewNeural",
+  "phrase": "what's the weather"
+ },
+ {
+  "class": "ask_question",
+  "stem": "ask_question__00036",
+  "voice": "en-US-AvaNeural",
+  "phrase": "what's the weather"
+ },
+ {
+  "class": "ask_question",
+  "stem": "ask_question__00071",
+  "voice": "en-US-BrianNeural",
+  "phrase": "what's the weather"
+ },
+ {
+  "class": "control_lights",
+  "stem": "control_lights__00121",
+  "voice": "en-US-EmmaNeural",
+  "phrase": "turn on the lights"
+ },
+ {
+  "class": "control_lights",
+  "stem": "control_lights__00161",
+  "voice": "en-US-MichelleNeural",
+  "phrase": "turn on the lights"
+ },
+ {
+  "class": "control_lights",
+  "stem": "control_lights__00201",
+  "voice": "en-US-RogerNeural",
+  "phrase": "turn on the lights"
+ },
+ {
+  "class": "dim_lights",
+  "stem": "dim_lights__00181",
+  "voice": "en-US-SteffanNeural",
+  "phrase": "dim the lights"
+ },
+ {
+  "class": "dim_lights",
+  "stem": "dim_lights__00211",
+  "voice": "en-US-AnaNeural",
+  "phrase": "dim the lights"
+ },
+ {
+  "class": "dim_lights",
+  "stem": "dim_lights__00241",
+  "voice": "en-GB-LibbyNeural",
+  "phrase": "dim the lights"
+ },
+ {
+  "class": "make_call",
+  "stem": "make_call__00361",
+  "voice": "en-GB-MaisieNeural",
+  "phrase": "call mom"
+ },
+ {
+  "class": "make_call",
+  "stem": "make_call__00401",
+  "voice": "en-IN-NeerjaExpressiveNeural",
+  "phrase": "call mom"
+ },
+ {
+  "class": "make_call",
+  "stem": "make_call__00441",
+  "voice": "en-NZ-MollyNeural",
+  "phrase": "call mom"
+ },
+ {
+  "class": "media_control",
+  "stem": "media_control__00601",
+  "voice": "en-IE-EmilyNeural",
+  "phrase": "pause"
+ },
+ {
+  "class": "media_control",
+  "stem": "media_control__00651",
+  "voice": "en-PH-RosaNeural",
+  "phrase": "pause"
+ },
+ {
+  "class": "media_control",
+  "stem": "media_control__00701",
+  "voice": "en-SG-WayneNeural",
+  "phrase": "pause"
+ },
+ {
+  "class": "play_music",
+  "stem": "play_music__00451",
+  "voice": "en-NG-AbeoNeural",
+  "phrase": "play music"
+ },
+ {
+  "class": "play_music",
+  "stem": "play_music__00481",
+  "voice": "en-NG-EzinneNeural",
+  "phrase": "play music"
+ },
+ {
+  "class": "play_music",
+  "stem": "play_music__00511",
+  "voice": "en-TZ-ElimuNeural",
+  "phrase": "play music"
+ },
+ {
+  "class": "set_alarm",
+  "stem": "set_alarm__00541",
+  "voice": "en-TZ-ImaniNeural",
+  "phrase": "set an alarm for six am"
+ },
+ {
+  "class": "set_alarm",
+  "stem": "set_alarm__00571",
+  "voice": "en-HK-SamNeural",
+  "phrase": "set an alarm for six am"
+ },
+ {
+  "class": "set_alarm",
+  "stem": "set_alarm__00001",
+  "voice": "en-US-AndrewNeural",
+  "phrase": "set an alarm for six am"
+ },
+ {
+  "class": "set_reminder",
+  "stem": "set_reminder__00001",
+  "voice": "en-US-AndrewNeural",
+  "phrase": "remind me to buy groceries"
+ },
+ {
+  "class": "set_reminder",
+  "stem": "set_reminder__00031",
+  "voice": "en-US-AvaNeural",
+  "phrase": "remind me to buy groceries"
+ },
+ {
+  "class": "set_reminder",
+  "stem": "set_reminder__00061",
+  "voice": "en-US-BrianNeural",
+  "phrase": "remind me to buy groceries"
+ },
+ {
+  "class": "set_temperature",
+  "stem": "set_temperature__00001",
+  "voice": "en-US-AndrewNeural",
+  "phrase": "set the temperature to twenty two degrees"
+ },
+ {
+  "class": "set_temperature",
+  "stem": "set_temperature__00031",
+  "voice": "en-US-AvaNeural",
+  "phrase": "set the temperature to twenty two degrees"
+ },
+ {
+  "class": "set_temperature",
+  "stem": "set_temperature__00061",
+  "voice": "en-US-BrianNeural",
+  "phrase": "set the temperature to twenty two degrees"
+ },
+ {
+  "class": "set_timer",
+  "stem": "set_timer__00001",
+  "voice": "en-US-AndrewNeural",
+  "phrase": "set a timer for five minutes"
+ },
+ {
+  "class": "set_timer",
+  "stem": "set_timer__00031",
+  "voice": "en-US-AvaNeural",
+  "phrase": "set a timer for five minutes"
+ },
+ {
+  "class": "set_timer",
+  "stem": "set_timer__00061",
+  "voice": "en-US-BrianNeural",
+  "phrase": "set a timer for five minutes"
+ }
+]
