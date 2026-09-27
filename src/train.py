@@ -226,7 +226,7 @@ def main():
             counts[CLASSES.index(cls)] += 1
         n = len(train_ds)
         w = n / (len(CLASSES) * counts)
-        w = w / w.mean()
+        w = (w / w.mean()).to(dev)
         print("class weights:", {CLASSES[i]: round(float(w[i]), 3)
                                  for i in range(len(CLASSES))})
         lossf = nn.CrossEntropyLoss(weight=w)
