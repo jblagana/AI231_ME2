@@ -93,27 +93,37 @@ def load_wav(p: Path) -> torch.Tensor:
     # decode if no .raw exists yet.
     raw_p = p.with_suffix(".raw")
     if raw_p.exists():
-        arr = np.fromfile(str(raw_p), dtype=np.int16).astype(np.float32)
-        arr /= 32768.0
+        arr = RAW_CACHE.get(str(raw_p))
+        if arr is None:  # preload_raw() not run (e.g. --smoke) — read direct
+            arr = (np.fromfile(str(raw_p), dtype=np.int16)
+                   / 32768.0).astype(np.float32)
         return torch.from_numpy(arr).unsqueeze(0)
     return load_mp3(p)  # imageio_ffmpeg binary (see gen_site_assets)
 
 
+RAW_CACHE: dict = {}
+
+
 def preload_raw(root: Path) -> int:
-    """Warm the OS page cache for every .raw under root (sequential read,
-    ~1 GB total). On network filesystems (JuiceFS) random per-file reads are
-    the bottleneck: measured ~50-100 ms/item cold on n003 (GPU idle 100% of
-    the epoch) vs ~4 ms on local disk — a single sequential pass over the
-    files puts them in page cache and per-item loads drop back to ~4 ms.
-    Returns the number of files touched."""
+    """Load every .raw under root into an in-RAM cache (module-level
+    RAW_CACHE, ~1 GB total).
+
+    Why not just warm the page cache: on JuiceFS (n003) even CACHED
+    per-file reads are ~100 ms each (measured 2026-09-28: 6900-item epoch
+    took >15 min, GPU util 0% the whole time), so the OS cache alone does
+    not fix the data path. In RAM, per-item loads are dict lookups (~0 ms)
+    and the A100 actually gets fed. On local disk the old ~4 ms path is
+    fine, but the cache is still a no-op-ish win (~1 s to build).
+    Returns the number of files cached."""
     t0 = time.time()
     n = 0
     for raw_p in sorted(root.rglob("*.raw")):
-        with open(raw_p, "rb") as f:
-            while f.read(1 << 20):
-                pass
+        key = str(raw_p)
+        if key not in RAW_CACHE:
+            RAW_CACHE[key] = (np.fromfile(str(raw_p), dtype=np.int16)
+                              / 32768.0).astype(np.float32)
         n += 1
-    print(f"preload: {n} raw files warmed in {time.time() - t0:.1f}s",
+    print(f"preload: {n} raw files cached in RAM in {time.time() - t0:.1f}s",
           flush=True)
     return n
 
