@@ -99,6 +99,25 @@ def load_wav(p: Path) -> torch.Tensor:
     return load_mp3(p)  # imageio_ffmpeg binary (see gen_site_assets)
 
 
+def preload_raw(root: Path) -> int:
+    """Warm the OS page cache for every .raw under root (sequential read,
+    ~1 GB total). On network filesystems (JuiceFS) random per-file reads are
+    the bottleneck: measured ~50-100 ms/item cold on n003 (GPU idle 100% of
+    the epoch) vs ~4 ms on local disk — a single sequential pass over the
+    files puts them in page cache and per-item loads drop back to ~4 ms.
+    Returns the number of files touched."""
+    t0 = time.time()
+    n = 0
+    for raw_p in sorted(root.rglob("*.raw")):
+        with open(raw_p, "rb") as f:
+            while f.read(1 << 20):
+                pass
+        n += 1
+    print(f"preload: {n} raw files warmed in {time.time() - t0:.1f}s",
+          flush=True)
+    return n
+
+
 class VCMDataset(Dataset):
     def __init__(self, root: Path, split: str, augment: bool = False):
         self.root = root
@@ -169,6 +188,10 @@ def main():
     print(f"train={len(train_ds)}  eval={len(eval_ds)}")
     if len(train_ds) == 0 or len(eval_ds) == 0:
         print("NO DATA — run src/make_dataset.py first"); return 2
+
+    # Warm the page cache before the first epoch (matters on network FS —
+    # see preload_raw docstring). No-op-ish on local disk (~1 s).
+    preload_raw(root)
 
     tr = DataLoader(train_ds, batch_size=args.batch, shuffle=True, num_workers=0)
     va = DataLoader(eval_ds, batch_size=args.batch, num_workers=0)
