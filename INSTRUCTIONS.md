@@ -21,6 +21,17 @@ Status: in progress — live notebook at notebooks/vcm_v1_training.ipynb (diagno
   decode path, v1 collapse); (2) diagnosis (aug cosine-sim probe,
   no-aug 3-ep climb); (3) speed-jitter root cause + fix; (4) validation;
   (5) full 15-epoch train (background process, progress cell re-runnable).
+- Results so far (all in the notebook, sections 6-8):
+  - v1b (fixed resample, 15 ep): final 0.183 — resample fix real but NOT
+    the whole story.
+  - Root cause #2: clips are ~2.14 s (speech ~1.25 s, onset ~0.08 s) but
+    the 1.0 s model window used a RANDOM crop — measured: random 1 s crop
+    keeps >=50% of speech only 23% of the time (61k trials) → model saw
+    partial phrases → collapsed to media_control (largest class, 799/1000
+    of 1k eval preds). (An earlier "0.39 s" figure was a probe bug — it
+    misread mp3 compressed bytes as audio.)
+  - Fix: center-crop + center-pad in `src/train.py`. v1c (15 ep, detached
+    pid 15836): ep7 eval_acc 0.385 and climbing (vs 0.183 v1b).
 
 ---
 

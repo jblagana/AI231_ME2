@@ -31,8 +31,15 @@ def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
     """(1, T) @16k -> (1, 80, 50) log-mel, padded/cropped to fixed length."""
     if wav.dim() == 1:
         wav = wav.unsqueeze(0)
-    if wav.shape[-1] > SR:  # crop to 1 s
-        start = random.randint(0, wav.shape[-1] - SR)
+    if wav.shape[-1] > SR:  # center-crop to 1 s
+        # BUGFIX 2026-09-27 (v1b still ~chance): this was a RANDOM crop, but
+        # clips are ~0.39 s (median) — a random window keeps only a random
+        # slice of the phrase (often the first word), so the model saw
+        # partial words + padding and collapsed to the largest class
+        # (media_control, 1000/6900 train). Center-crop keeps the phrase
+        # core; for short clips (<=1 s, which is ~all of them) nothing is
+        # cropped and the audio is centered in the window below.
+        start = (wav.shape[-1] - SR) // 2
         wav = wav[..., start:start + SR]
     mel = torchaudio.transforms.MelSpectrogram(
         sample_rate=SR, n_fft=1024, hop_length=320, n_mels=N_MELS,
@@ -42,7 +49,11 @@ def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
     # normalize to ~[0,1] (log10 range is ~[-5, 0])
     logmel = (logmel + 5.0) / 5.0
     if logmel.shape[-1] < N_FRAMES:
-        logmel = nn.functional.pad(logmel, (0, N_FRAMES - logmel.shape[-1]))
+        # center the audio in the 50-frame window (was left-aligned — the
+        # right half of every ~0.39 s clip was dead silence)
+        pad = N_FRAMES - logmel.shape[-1]
+        logmel = nn.functional.pad(
+            logmel, (pad // 2, pad - pad // 2))
     return logmel[..., :N_FRAMES]
 
 

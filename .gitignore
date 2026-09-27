@@ -27,3 +27,8 @@ smoke_tts*.log
 pip_install*.log
 pip_torch*.log
 runs/
+
+_nb2.py
+_nb2.log
+_nb2_err.log
+train_v1c.log
