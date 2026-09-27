@@ -10,3 +10,13 @@ RESUME: 7574 clips already in manifest, skipping them
 [train] set_reminder: 600 clips (cum ok=7576 fail=0)
 [train] make_call: 800 clips (cum ok=7576 fail=0)
 [eval] play_music: 600 clips (cum ok=7576 fail=0)
+[eval] ask_question: 700 clips (cum ok=8200 fail=0)
+[eval] control_lights: 800 clips (cum ok=9000 fail=0)
+[eval] dim_lights: 600 clips (cum ok=9594 fail=6)
+[eval] set_timer: 600 clips (cum ok=10190 fail=10)
+[eval] set_alarm: 600 clips (cum ok=10787 fail=13)
+[eval] set_temperature: 600 clips (cum ok=11387 fail=13)
+[eval] media_control: 1000 clips (cum ok=12387 fail=13)
+[eval] set_reminder: 600 clips (cum ok=12987 fail=13)
+[eval] make_call: 800 clips (cum ok=13787 fail=13)
+DONE: 13787 ok, 13 failed
