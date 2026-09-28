@@ -18,7 +18,7 @@ re-hunt it.
 
 | Dataset | Contributor | Covers which of the 10 tasks | Notes |
 |---|---|---|---|
-| **SLURP** | Mark | lighting, music, volume, temperature, alarm, weather, time | Spoken Language Understanding Resource Package — ~23k smart-home commands, real people, real rooms. **The main real corpus.** |
+| **SLURP** | Mark | lighting, music, volume, alarm, weather, time, qa — **NOT timer/temp/reminder/call** | Spoken Language Understanding Resource Package — 16,521 entries, 93 intents, real people, real rooms. **The main real corpus.** See the verified coverage table below. |
 | **Fluent Speech Commands** | Mark | 31 intents incl. lights/music/volume/temp | 97 speakers, 248 phrases, action/object/location slots. |
 | **Snips SLU** | Quiel | smart-home appliances (lighting) | Real, English, has speaker demographics. |
 | **Timers and Such** ⭐ | Quiel | **TIMER + ALARM specifically** | NeurIPS 2021 benchmark, real human SetTimer/SetAlarm. **Only 2,151 real utterances across all 4 intents.** 12.2GB zip — the one still downloading as of 09-29. |
@@ -33,6 +33,31 @@ re-hunt it.
 | **Chatterbox TTS** + LibriSpeech + Common Voice refs | Mark | 9,000 (20 labels × 30 refs × 5 phrases × 3 variants; 24 LibriSpeech + 6 Filipino-English refs) |
 | **SynTTS-Commands** (cosy2) | Cherry | 14k (cmd 1) + 53k (cmd 8) |
 | **jbuchner synthetic** | Joven | one-word, prune to off/on/stop |
+
+### SLURP intent coverage — VERIFIED against the 10 classes (2026-09-29)
+Pulled the full `train.jsonl` + `devel.jsonl` + `test.jsonl` from
+`github.com/pswietojanski/slurp` and counted every `intent` field (16,521
+entries, 93 unique intents, 18 scenarios). Mapped to `src/commands.py`:
+
+| Our class | SLURP intent(s) | Real clips (train+dev+test) |
+|---|---|---|
+| `play_music` | `play_music` | 911 |
+| `ask_question` | `qa_factoid` + `qa_definition` + `qa_currency` + `qa_maths` + `weather_query` + `datetime_query` + `news_query` | 765+378+202+116+834+490+704 ≈ **3,489** |
+| `control_lights` | `iot_hue_lighton` + `iot_hue_lightoff` | 30+205 = **235** |
+| `dim_lights` | `iot_hue_lightdim` + `iot_hue_lightchange` | 111+183 = **294** |
+| `set_timer` | — **NONE** — | 0 |
+| `set_alarm` | `alarm_set` + `alarm_query` + `alarm_remove` | 253+183+113 = **549** |
+| `set_temperature` | — **NONE** — | 0 |
+| `media_control` | `audio_volume_up` + `audio_volume_down` + `audio_volume_mute` + `audio_volume_other` | 135+71+157+23 = **386** |
+| `set_reminder` | — **NONE** — (closest is `calendar_set`, a different task) | 0 |
+| `make_call` | — **NONE** — | 0 |
+
+**SLURP covers 6 of 10 classes.** The 4 gaps (`set_timer`,
+`set_temperature`, `set_reminder`, `make_call`) have **zero** matching
+intents — confirmed by keyword search across all 93 intent names (no
+timer/temperature/thermostat/remind/call/phone hits). Those four fall to
+**Timers and Such** (timer+alarm), **Fluent Speech Commands** (temp), and
+**Ayla's pool / Common Voice** (reminder+call).
 
 ## Classmate repos (public, fetched + verified 2026-09-29)
 - **Mark's Option B** — `github.com/markandrian30/AI231/tree/main/MEX2/OptionB`
@@ -59,11 +84,14 @@ re-hunt it.
 
 ## The takeaway (what to actually do)
 1. **No public dataset has our 10 commands pre-labeled** — they're our spec,
-   not a benchmark. The real-human answer is a **combination**:
-   - **SLURP + Fluent Speech Commands + Snips SLU** → lighting/music/volume/temperature
+   not a benchmark. The real-human answer is a **combination** (per the
+   verified SLURP table above):
+   - **SLURP** → lighting, music, volume, alarm, weather/time/qa (6 of 10, ~6,300 real clips)
    - **Timers and Such** → TIMER + ALARM (the specific real set; lands with the 12.2GB download)
+   - **Fluent Speech Commands + Snips SLU** → temperature + lighting fill
    - **Common Voice** (filter by `sentence`, has Filipino accents) → novel phrasings + Filipino-accent fill
    - **Ayla's pooled recordings** → real clips of our *exact* phrases (the strongest match)
+   - **set_reminder + make_call** → **no real public corpus** — Ayla's pool + Common Voice only
 2. **Synthetic (Mark's Option B + eSpeak NG + SynTTS)** fills the gaps to hit
    50–100 clips/class where real data is thin.
 3. **Common Voice filtering is now the fallback, not the primary** — the class
