@@ -6,6 +6,10 @@
 Read this first, then `PLAN.md` (architecture + timeline), then
 `INSTRUCTIONS.md` (instruction log — the top entry is the handover + boss
 clarifications). Specs live at `C:\Users\Jan\Muji\ai231_me2_specs.md`.
+**After v1f lands:** read `DATASETS.md` (2026-09-29) — the verified map of
+every real-human + synthetic dataset the class group has (SLURP, Fluent,
+Snips SLU, Timers-and-Such, Common Voice, Mark's Option B, Ayla's pool) for
+the robustness / real-human phase.
 
 ## State of the world (verified 2026-09-25 ~16:30)
 
