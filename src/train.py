@@ -109,6 +109,37 @@ def load_wav(p: Path) -> torch.Tensor:
 
 RAW_CACHE: dict = {}
 BASE_FEAT_CACHE: dict = {}  # str(mp3 path) -> base log-mel (1,80,50), no aug
+NOISE_BANK: list = []  # v1e: list of (1,80,T) log-mel MUSAN noise clips
+
+
+def load_noise_bank(noise_dir: Path, max_sec: float = 10.0) -> int:
+    """v1e: load every .npy in noise_dir (16 kHz mono float32, from
+    src/v1e_dl.py — MUSAN free-sound + sound-bible via HF mirror) and
+    precompute its log-mel ONCE. RAM cost ~500 MB for 774 clips, one-time
+    ~2 min (same 43 ms/item mel cost as the base features)."""
+    t0 = time.time()
+    for f in sorted(Path(noise_dir).glob("*.npy")):
+        w = torch.from_numpy(np.load(f)).unsqueeze(0)
+        if w.shape[-1] > int(SR * max_sec):  # cap RAM per clip
+            w = w[..., :int(SR * max_sec)]
+        NOISE_BANK.append(wav_to_logmel(w))
+    print(f"noise bank: {len(NOISE_BANK)} MUSAN clips cached in "
+          f"{time.time() - t0:.0f}s", flush=True)
+    return len(NOISE_BANK)
+
+
+def _resample_mel(x: torch.Tensor, T2: int) -> torch.Tensor:
+    """Linearly resample a mel feature's frame axis to T2 frames (~0.4 ms)."""
+    T = x.shape[-1]
+    if T2 <= 1:
+        return x[..., :1]
+    if T2 == T:
+        return x
+    src = torch.linspace(0.0, T - 1, T2)
+    i0 = src.long().clamp(max=T - 1)
+    i1 = (i0 + 1).clamp(max=T - 1)
+    frac = (src - src.floor()).float().view(1, 1, -1)
+    return x.index_select(2, i0) * (1 - frac) + x.index_select(2, i1) * frac
 
 
 def preload_raw(root: Path) -> int:
@@ -182,30 +213,40 @@ class VCMDataset(Dataset):
             # are evenly spaced in time, so stretching the frame axis is
             # exactly a pitch-preserving speed change for the features.
             rate = random.uniform(0.95, 1.05)
-            T = x.shape[-1]
-            T2 = int(round(T / rate))
-            if T2 > 1:
-                src = torch.linspace(0.0, T / rate - 1, T2)
-                i0 = src.long().clamp(max=T - 1)
-                frac = (src - src.floor()).float()
-                x = x[..., i0] * (1 - frac) + x[..., (i0 + 1).clamp(max=T - 1)] * frac
-                if x.shape[-1] < N_FRAMES:
-                    pad = N_FRAMES - x.shape[-1]
-                    x = nn.functional.pad(x, (pad // 2, pad - pad // 2))
-                x = x[..., :N_FRAMES]
+            T2 = int(round(x.shape[-1] / rate))
+            x = _resample_mel(x, T2)
+            if x.shape[-1] < N_FRAMES:
+                pad = N_FRAMES - x.shape[-1]
+                x = nn.functional.pad(x, (pad // 2, pad - pad // 2))
+            x = x[..., :N_FRAMES]
             # random gain ±6 dB (log-mel is log10: +1 dB = +1/20 on the
             # raw scale, and our features are (log10+5)/5 = dB/20 + 0.5, so
             # a dB gain is just an additive constant)
             x = x + random.uniform(-6.0, 6.0) / 20.0
-            # white-noise floor (SNR 5-25 dB) — additive in the feature
-            # domain, scaled to the feature's own power (same intent as the
-            # waveform version, which is what v1b/v1c trained with)
+            # background noise (SNR 5-25 dB), additive in the feature
+            # domain, scaled to the feature's own power.
+            # v1e (2026-09-28): REAL MUSAN noise (free-sound + sound-bible,
+            # 16 kHz .npy bank precomputed to log-mel by load_noise_bank)
+            # instead of the white-noise placeholder v1b-v1d trained with.
+            # Random 1 s window, random time offset, then SNR-matched.
+            # White Gaussian is the fallback when the bank is empty
+            # (e.g. --smoke before v1e_dl.py has run).
             snr_db = random.uniform(5.0, 25.0)
+            if NOISE_BANK:
+                nz = random.choice(NOISE_BANK)
+                W = N_FRAMES
+                if nz.shape[-1] >= W:
+                    start = random.randint(0, nz.shape[-1] - W)
+                    nz = nz[..., start:start + W]
+                else:  # pad short clips (repeat) to the window length
+                    reps = -(-W // nz.shape[-1])
+                    nz = nz.repeat(1, 1, reps)[..., :W]
+            else:
+                nz = torch.randn(1, N_MELS, N_FRAMES)
             sig_p = x.pow(2).mean().clamp_min(1e-8)
-            noise = torch.randn_like(x)
-            noise_p = noise.pow(2).mean().clamp_min(1e-8)
-            scale = torch.sqrt(sig_p / (noise_p * 10 ** (snr_db / 10.0)))
-            x = x + noise * scale
+            nz_p = nz.pow(2).mean().clamp_min(1e-8)
+            scale = torch.sqrt(sig_p / (nz_p * 10 ** (snr_db / 10.0)))
+            x = x + nz * scale
         return x, CLASSES.index(cls)
 
 
@@ -223,6 +264,10 @@ def main():
                     help="inverse-frequency class weights on CrossEntropy "
                          "(v1d: media_control 2000 vs dim_lights 1194 train "
                          "clips skewed v1c toward the big class)")
+    ap.add_argument("--real-noise", default=None, metavar="DIR",
+                    help="v1e: dir of 16 kHz mono .npy MUSAN noise clips "
+                         "(src/v1e_dl.py output) — replaces the white-noise "
+                         "placeholder with real background noise, SNR 5-25 dB")
     args = ap.parse_args()
 
     root = Path(args.data)
@@ -239,6 +284,14 @@ def main():
     # Warm the page cache before the first epoch (matters on network FS —
     # see preload_raw docstring). No-op-ish on local disk (~1 s).
     preload_raw(root)
+
+    # v1e: real MUSAN noise bank (skipped for --smoke — the white-noise
+    # fallback keeps the pipeline check fast).
+    if args.real_noise and not args.smoke:
+        load_noise_bank(Path(args.real_noise))
+        if not NOISE_BANK:
+            print(f"--real-noise: no .npy found in {args.real_noise} "
+                  f"— falling back to white noise")
 
     # Precompute every base log-mel ONCE (RAM, ~43 ms/file -> ~10 min for
     # 13,787 files, one-time). After this, per-item prep is ~1 ms of mel-
