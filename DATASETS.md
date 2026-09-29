@@ -98,6 +98,27 @@ timer/temperature/thermostat/remind/call/phone hits). Those four fall to
    group already has real-human coverage of all 10 tasks.
 4. **GSC v0.02 noise set** is the source for the noisy-condition eval (not the commands).
 
+## SLURP real-human eval set (built 2026-09-29, boss session)
+The cross-domain probe — feeds real SLURP voices through the TTS-trained VCM
+to get the "does it hold up on real people" number (Sir's ruling). Built, not
+just described:
+- **`src/make_slurp_eval.py`** — downloads the SLURP *text* (test + devel
+  held-out splits, 5,007 entries), maps each `intent` onto the **6 covered
+  classes** (play_music, ask_question, control_lights, dim_lights, set_alarm,
+  media_control), selects a **balanced 504-clip** set (84/class, 1 distinct
+  FLAC/entry). Writes `data/eval_slurp/manifest.csv` + `needed_flac.txt`.
+- **`src/eval_slurp.py`** — runs a checkpoint over the SLURP clips via the
+  exact training feature path (`wav_to_logmel`), reports overall + per-class
+  cross-domain accuracy + top confusion pairs. `--ckpt runs/v1e/vcm_v1.pt`.
+- **Audio:** `slurp_real.tar.gz` (3.92 GB, Zenodo record 4274930) — extract
+  only the 504 FLACs in `needed_flac.txt` into `data/eval_slurp/audio/`.
+- **The 4 gap classes** (set_timer, set_temperature, set_reminder, make_call)
+  are NOT in this set — they need Timers-and-Such / Fluent / Ayla's pool.
+- **Why it matters:** 0.665 (v1e full eval) is TTS-on-TTS. This set is the
+  first real-human number. If it's far below 0.665, the TTS→real gap is the
+  bottleneck (→ v2 real-human training); if it's close, within-domain
+  confusion is still the bigger problem (→ keep fixing taxonomy/arch).
+
 ## Verification status (honest)
 - Dataset **names + descriptions**: from the classmates' own annotations in
   the sheet (their verified notes) + the two **public GitHub repos** fetched
