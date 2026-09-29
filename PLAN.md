@@ -40,6 +40,11 @@ changes; status below is the live state as of 09-28 (code = `src/`).
    (1s center-crop), `gen_site_assets.py` (1s/50-frame viz) all still 1s.
    Note: TTS clips are ~0.39s median, so 2s mostly adds headroom for *live
    human* speech, not the synthetic set.
+   **SUPERSEDED (2026-09-30, A2):** the window is **3.0s (150 frames)**, not
+   2s — the clip-duration audit (median 2.18s, p90 3.05s) + the 63.7%
+   flagged-error bucket show 2s still truncates 63% of clips and cuts the
+   slot values. See the **A2** section below for the full rationale + the
+   two-head (command + slot) architecture that rides on the 3.0s window.
 2. **Classes 10 → 12** (split `ask_question` → `ask_weather` + `ask_time`).
    "what's the weather" and "what time is it" both hit one class, so the demo
    app can't know which to answer. **PENDING code** — `commands.py` `CLASSES`
@@ -160,6 +165,163 @@ train): it FAILED** — 0.7353 (−0.0990), train loss ~1.10 vs v1g's ~0.34
 couldn't absorb it in 30 ep. **Keep the v1g recipe** for the final; if the
 10-03 train wants the robustness ingredients, ablate them one at a time (the
 SNR 0–25 extension is the one that directly serves the benchmark's SNR-5 item).
+
+## A2 — 3.0s window + two-head (command + slot) architecture (2026-09-30)
+
+**Rationale:** v1i's 1,388 logged errors split 884 (63.7%) on audio-flagged clips
+(cut_tail/late_head) vs 504 (36.3%) clean. The audio audit flags **62.6% of all
+15,268 clips** — the 1.0s window is chopping the norm, not the edge. Clip duration
+distribution: median 2.18s, p90 3.05s. Coverage: 1.0s → 0.0%, 2.0s → 36.8%,
+**3.0s → 89.3%**, 3.5s → 97.6%. The slot values (percentage, duration, time,
+temperature, person, action) live in the **second half** of the phrase — a 1.0s
+window captures the verb and cuts the slot. The A1 frozen probe (0.42 vs 0.86)
+killed onset-trim-within-1.0s: the window is the wrong *size*, not the wrong
+alignment.
+
+### Window: 3.0s (150 frames @ 20 ms hop)
+
+| window | frames | % clips fully captured | verdict |
+|---|---|---|---|
+| 1.0s (current) | 50 | 0.0% | too short — the problem |
+| 2.0s | 100 | 36.8% | still truncates 63% — slot head reads half-slots |
+| **3.0s** | **150** | **89.3%** | **the pick** — full slot for most clips |
+| 3.5s | 175 | 97.6% | +8.3% coverage for +17% compute — diminishing |
+| 4.0s | 200 | 100% | overkill; trailing silence wastes capacity |
+
+3.0s is the sweet spot: the slot values are fully captured for 89.3% of clips,
+and the extra 1.0s over 2.0s is where the slot values actually live.
+
+### Architecture: two-head CRNN
+
+```
+Input: (B, 1, 80, 150)   # 3.0s @ 20 ms hop, onset-aligned (speech at frame 0)
+
+Conv stack (unchanged from v1i):
+  Conv2d(1, 32, 3, pad=1) → BN → ReLU → MaxPool2d(2)   # 80 × 75
+  Conv2d(32, 64, 3, pad=1) → BN → ReLU → MaxPool2d(2)   # 40 × 38
+  Conv2d(64, 128, 3, pad=1) → BN → ReLU → MaxPool2d(2)   # 20 × 19
+
+Conv output: (B, 128, 10, 18)   # 10 freq cells × 18 time cells (tool-verified)
+
+Temporal layout (onset-aligned, 150 frames → 18 cells after 8× downsampling,
+~8.33 frames/cell ≈ 0.167 s/cell):
+  cells 0–3   (frames 0–32,   ~0.67s)  → verb ("set", "dim", "call", "remind")
+  cells 3–14  (frames 24–120, ~2.0s)   → slot value ("forty five minutes", "fifty percent")
+  cells 15–17 (frames 120–150, ~0.5s)  → trailing silence
+
+Head 1 — command (11 classes):
+  GlobalMaxPool over all 18 time cells → (B, 128)
+  FC(128, 11)
+  # same as v1i; the verb + full context disambiguates the class
+
+Head 2 — slot value (per-class, 6 sub-heads):
+  Temporal slice: cells 3–14 → (B, 128, 10, 12)
+  GlobalMaxPool → (B, 128)
+  FC(128, N_values)   # one FC per parametric class, N_values from taxonomy below
+  # at inference: run all 6 sub-heads, select the one matching head-1's prediction
+```
+
+**Why temporal slicing for the slot head:** the verb occupies cells 0–3, the
+slot occupies cells 3–14. A global max over all 18 cells (like head 1) would
+let the loud verb cell dominate and dilute the slot. Slicing to cells 3–14
+gives the slot head a clean view of the slot value without the verb's
+interference. This is the spatial separation the 1.0s window destroys — at 50
+frames → 6 cells, verb and slot are in the *same* 2–3 cells.
+
+**Param budget (tool-verified):**
+- Conv stack: 93,120 (unchanged from v1i)
+- Head 1: 128 × 11 + 11 = 1,419
+- Head 2 (6 sub-heads): 128 × (5+8+7+7+10+6) + 43 = 128 × 43 + 43 = 5,547
+- **Total: 100,086 params** — still well under the 1M target, ~1 MB ONNX
+
+### Slot taxonomy (from `commands.py` phrases)
+
+| class | slot type | values | N |
+|---|---|---|---|
+| dim_lights | percentage | twenty, thirty, fifty, seventy, eighty | 5 |
+| set_timer | duration | one, two, five, ten, fifteen, twenty, thirty, forty five (minutes) | 8 |
+| set_alarm | time | five am, five thirty am, six am, seven am, eight am, nine am, six pm | 7 |
+| set_temperature | temperature | eighteen, twenty, twenty two, twenty four, twenty five, twenty six, twenty eight (degrees) | 7 |
+| set_reminder | action/time | buy groceries, call mom, five pm, water the plants, the meeting, tomorrow, take out the trash, pay the bills, next week, drink water | 10 |
+| make_call | person | mom, dad, brother, sister, friend, doctor | 6 |
+| **total** | | | **43** |
+
+**Non-parametric classes** (play_music, ask_weather, ask_time, control_lights,
+media_control) have no slot head — head 1's output is the full answer.
+
+**Caveat:** the slot vocab is fixed to the TTS phrases. A real user saying
+"dim to thirty-seven percent" or "set a timer for twenty-two minutes" would
+hit an OOV slot. For the demo this is fine (evaluators use the known phrases);
+for production, a number decoder or mini-ASR (the CTC lever in Future Work)
+is the path. Document this in the writeup.
+
+### Training plan
+
+- **Full retrain from scratch** — no warm-start (input shape 50→150 frames
+  breaks the conv stack's learned filters; the 3.0s window sees 3× more
+  temporal context the v1i weights weren't trained on).
+- **Data:** regenerate all clips at 3.0s (onset-aligned, pad to 150 frames).
+  Current 11,400 clips (v1f) + v1i's 11-class data → re-slice to 3.0s.
+  The TTS MP3s are already on disk; only the crop/pad step changes.
+- **Recipe:** v1g recipe (the v1k recipe failed — keep what works).
+- **Epochs:** 50 (full retrain, no warm-start; v1g converged in ~30 ep from
+  scratch on 1.0s, 3.0s has 3× more temporal data to learn from).
+- **Loss:** head 1 = standard CE (11 classes, class-weighted).
+  Head 2 = CE per parametric class (only active for the 6 parametric classes;
+  non-parametric clips contribute 0 to the slot loss).
+  Total loss = CE_cmd + λ × CE_slot, λ = 0.5 (tunable; slot is secondary).
+- **Eval:** command accuracy (primary, comparable to v1i's 0.8618) +
+  slot accuracy (per-class, secondary). Report both.
+
+### Risks
+
+1. **Slot head underfits on 43 values × ~1,000 clips/class.** The parametric
+   classes have ~1,000 clips each (v1f target), but the slot values are
+   imbalanced (e.g., "five minutes" appears in 3 phrases, "forty five minutes"
+   in 1). Mitigation: class-weighted CE on the slot head too.
+2. **3.0s window slows inference.** 150 frames vs 50 = 3× more conv compute.
+   On the Pi: ~2 ms → ~6 ms per clip. Still trivial (≪ 3.0s window, real-time
+   OK). Document in BENCHMARK.md.
+3. **Onset alignment quality.** If the onset detector misfires (e.g., leading
+   noise in the TTS), the temporal slicing is off. Mitigation: the TTS clips
+   are clean (no leading noise); for live mic, the wake gate precedes the VCM
+   so the onset is well-defined.
+4. **Slot values in TTS are spoken numbers** ("twenty five", not "25"). The
+   model learns the *audio* pattern of the number, not a text token. This is
+   correct for a VCM (no ASR in the loop) but means the slot vocab is tied to
+   the spoken form. If a phrase says "twenty-two" (hyphenated) vs "twenty two"
+   (two words), the TTS may render them differently. Check the TTS output.
+
+### Decision points (boss)
+
+1. **Slot taxonomy:** the 43 values above are extracted from the current
+   `commands.py` phrases. Add/remove any before we regenerate?
+2. **λ (slot loss weight):** 0.5 is a starting guess. If command accuracy
+   drops below v1i's 0.8618, lower λ (command-first). If slot accuracy is
+   <80%, raise λ.
+3. **Set_reminder slot (10 values, most diverse):** "buy groceries", "call
+   mom", "five pm", "water the plants" — these are semantically heterogeneous
+   (action vs time vs object). Consider splitting set_reminder into
+   set_reminder_action + set_reminder_time if the 10-way confuses the model.
+   Hold until the first train shows the confusion matrix.
+4. **BC-ResNet at 150 frames:** now a better fit (3× more temporal room for
+   the broadcast trick). Post-A2 arch swap candidate. Hold until the CRNN
+   two-head baseline is established.
+
+### Timeline impact
+
+| day | A2 milestone |
+|---|---|
+| 09-30 (today) | Plan written ✅; regenerate 3.0s dataset (re-slice existing TTS) |
+| 10-01 | A2 train (50 ep, HPC); eval command + slot accuracy |
+| 10-02 | If A2 ≥ v1i: demo polish with slot values in the mock device UI;
+         if A2 < v1i: fall back to v1i (command-only, slots out of scope) |
+| 10-03 | **Deadline** — ship whichever is better |
+
+**Fallback:** if A2 underperforms v1i on command accuracy, the demo ships
+v1i (0.8618, command-only) and the slot head is documented as "next step."
+The 3.0s window alone (without the slot head) is still a valid A2 — the
+window fix attacks the 63.7% flagged-error bucket regardless of the slot head.
 
 ## Benchmark (collective task — our proposal, post to group)
 Per the 09-24 group protocol (N non-owner evaluators, each command × N, logs required):
