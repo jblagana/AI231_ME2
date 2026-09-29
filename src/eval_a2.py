@@ -21,7 +21,8 @@ import torch
 sys.path.insert(0, str(Path(__file__).parent))
 from slots import extract_slot, PARAMETRIC, SLOT_VOCAB  # noqa: E402
 from model_a2 import VCMTwoHead  # noqa: E402
-from train_a2 import VCMDatasetA2, CLASSES, preload_raw, load_noise_bank  # noqa: E402
+from train_a2 import (VCMDatasetA2, CLASSES, preload_raw,  # noqa: E402
+                      precompute_base_features, N_MELS, SR)
 from torch.utils.data import DataLoader  # noqa: E402
 
 
@@ -40,18 +41,20 @@ def main():
 
     ds = VCMDatasetA2(root, args.split, augment=False)
     print(f"eval split={args.split}  n={len(ds)}")
+    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"device: {dev}")
+    # GPU precompute of base features (3.0 s mel is ~8x the 1.0 s work;
+    # ~354 ms/item on CPU -> ~135 min for 11.4k; ~2-5 ms/item on the A100).
     preload_raw(root)
-    t0 = time.time()
-    for p, _, _, _ in ds.items:
-        ds._base_feat(p)
-    print(f"base features: {len(ds.items)} in {time.time() - t0:.0f}s", flush=True)
+    from torchaudio.transforms import MelSpectrogram
+    gpu_mel = MelSpectrogram(sample_rate=SR, n_fft=1024, hop_length=320,
+                             n_mels=N_MELS, f_min=50.0, f_max=8000.0).to(dev)
+    precompute_base_features(ds, dev, gpu_mel)
     va = DataLoader(ds, batch_size=args.batch, num_workers=0)
 
-    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     m = VCMTwoHead(len(CLASSES)).to(dev)
     m.load_state_dict(torch.load(ckpt, map_location=dev))
     m.eval()
-    print(f"device: {dev}")
 
     cmd_correct = cmd_total = 0
     slot_correct = slot_total = 0
@@ -65,9 +68,28 @@ def main():
         for x, y_cmd, y_slot in va:
             x, y_cmd, y_slot = x.to(dev), y_cmd.to(dev), y_slot.to(dev)
             cmd_logits, slot_feat = m(x)
-            pred = cmd_logits.argmax(1).cpu()
+            pred = cmd_logits.argmax(1)
             cmd_correct += (pred == y_cmd).sum().item()
             cmd_total += len(y_cmd)
+            for cls in PARAMETRIC:
+                ci = CLASSES.index(cls)
+                mask = (y_cmd == ci) & (y_slot >= 0)
+                if mask.any():
+                    sl = m.slot_logits(slot_feat[mask], cls)
+                    sp = sl.argmax(1)
+                    ys = y_slot[mask]
+                    slot_correct += (sp == ys).sum().item()
+                    slot_total += int(mask.sum().item())
+                    slot_per_cls[cls][1] += int(mask.sum().item())
+                    slot_per_cls[cls][0] += int((sp == ys).sum().item())
+                    sp = sp.cpu()
+                    ys = ys.cpu()
+                    for i in range(len(ys)):
+                        if sp[i] != ys[i]:
+                            slot_confusion[cls][(SLOT_VOCAB[cls][ys[i]],
+                                                SLOT_VOCAB[cls][sp[i]])] += 1
+            pred = pred.cpu()
+            y_cmd = y_cmd.cpu()
             for i in range(len(y_cmd)):
                 t = CLASSES[y_cmd[i]]
                 p = CLASSES[pred[i]]
@@ -76,21 +98,6 @@ def main():
                     per_cls[t][0] += 1
                 else:
                     confusion[(t, p)] += 1
-            for cls in PARAMETRIC:
-                ci = CLASSES.index(cls)
-                mask = (y_cmd == ci) & (y_slot >= 0)
-                if mask.any():
-                    sl = m.slot_logits(slot_feat[mask], cls)
-                    sp = sl.argmax(1).cpu()
-                    ys = y_slot[mask].cpu()
-                    slot_correct += (sp == ys).sum().item()
-                    slot_total += int(mask.sum().item())
-                    slot_per_cls[cls][1] += int(mask.sum().item())
-                    slot_per_cls[cls][0] += int((sp == ys).sum().item())
-                    for i in range(len(ys)):
-                        if sp[i] != ys[i]:
-                            slot_confusion[cls][(SLOT_VOCAB[cls][ys[i]],
-                                                SLOT_VOCAB[cls][sp[i]])] += 1
     dt = time.time() - t0
 
     cmd_acc = cmd_correct / max(cmd_total, 1)

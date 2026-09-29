@@ -58,7 +58,7 @@ _MEL = torchaudio.transforms.MelSpectrogram(
 )
 
 
-def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
+def wav_to_logmel(wav: torch.Tensor, mel: torch.nn.Module = None) -> torch.Tensor:
     """(1, T) @16k -> (1, 80, 150) log-mel, RIGHT-aligned in the 3.0 s window.
 
     Right-aligned (pad on the LEFT) so the slot word — the LAST spoken word of
@@ -69,18 +69,43 @@ def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
     head uses global max pooling (alignment-invariant), so right-alignment
     costs it nothing. Clips longer than 3.0 s keep their LAST 3.0 s (the slot
     word is at the end, so we must not crop the tail)."""
+    if mel is None:
+        mel = _MEL
     if wav.dim() == 1:
         wav = wav.unsqueeze(0)
     if wav.shape[-1] > SR * WINDOW_S:
         # keep the TAIL (last 3.0 s) — the slot word is the last word
         wav = wav[..., -int(SR * WINDOW_S):]
-    mel = _MEL(wav)
-    logmel = torch.clamp(mel, min=1e-5).log10()
+    m = mel(wav)
+    logmel = torch.clamp(m, min=1e-5).log10()
     logmel = (logmel + 5.0) / 5.0
     if logmel.shape[-1] < N_FRAMES:
         pad = N_FRAMES - logmel.shape[-1]
         logmel = nn.functional.pad(logmel, (pad, 0))  # right-align: pad LEFT
     return logmel[..., :N_FRAMES]
+
+
+def precompute_base_features(ds, dev: torch.device, mel: torch.nn.Module) -> int:
+    """Compute every base log-mel ONCE, on `dev` (GPU), into BASE_FEAT_CACHE.
+
+    The 3.0 s mel is ~8x the 1.0 s mel work; on CPU it's ~354 ms/item ->
+    ~135 min for 22.8k clips (measured _a2_meltiming.py, 2026-09-30). On the
+    A100 the mel matmul is ~100x faster (~2-5 ms/item), so the whole precompute
+    is ~2 min. Features are stored on CPU in BASE_FEAT_CACHE (~1.1 GB) so the
+    per-item training path stays a dict lookup. Returns the count cached."""
+    t0 = time.time()
+    n = 0
+    for p, _, _, _ in ds.items:
+        key = str(p)
+        if key in BASE_FEAT_CACHE:
+            continue
+        w = load_wav(p).to(dev)
+        feat = wav_to_logmel(w, mel).cpu()
+        BASE_FEAT_CACHE[key] = feat
+        n += 1
+    print(f"base features: {len(BASE_FEAT_CACHE)} cached (GPU {dev}) in "
+          f"{time.time() - t0:.0f}s", flush=True)
+    return len(BASE_FEAT_CACHE)
 
 
 def _resample_mel(x: torch.Tensor, T2: int) -> torch.Tensor:
@@ -104,6 +129,7 @@ def load_wav(p: Path) -> torch.Tensor:
         if arr is None:
             arr = (np.fromfile(str(raw_p), dtype=np.int16)
                    / 32768.0).astype(np.float32)
+            RAW_CACHE[str(raw_p)] = arr
         return torch.from_numpy(arr).unsqueeze(0)
     raise FileNotFoundError(f"no .raw for {p} (run src/decode_wav.py)")
 
@@ -122,13 +148,16 @@ def preload_raw(root: Path) -> int:
     return n
 
 
-def load_noise_bank(noise_dir: Path, max_sec: float = 4.0) -> int:
+def load_noise_bank(noise_dir: Path, max_sec: float = 4.0, mel: torch.nn.Module = None) -> int:
+    if mel is None:
+        mel = _MEL
+    dev = next(mel.buffers()).device  # MelSpectrogram holds buffers only
     t0 = time.time()
     for f in sorted(Path(noise_dir).glob("*.npy")):
-        w = torch.from_numpy(np.load(f)).unsqueeze(0)
+        w = torch.from_numpy(np.load(f)).unsqueeze(0).to(dev)
         if w.shape[-1] > int(SR * max_sec):
             w = w[..., :int(SR * max_sec)]
-        NOISE_BANK.append(wav_to_logmel(w))
+        NOISE_BANK.append(wav_to_logmel(w, mel).cpu())
     print(f"noise bank: {len(NOISE_BANK)} MUSAN clips cached in "
           f"{time.time() - t0:.0f}s", flush=True)
     return len(NOISE_BANK)
@@ -242,27 +271,40 @@ def main():
     print(f"slot coverage: eval  {es}/{ep_} parametric clips have a slot "
           f"({100*es/max(ep_,1):.0f}%)")
 
-    preload_raw(root)
+    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"device: {dev}")
+
+    if not args.smoke:
+        # Full preload only for real runs (22.8k files, minutes on the
+        # network FS). Smoke uses 96 items — load them lazily below.
+        preload_raw(root)
+        # GPU mel (shared by base-feature precompute + noise bank): the 3.0 s
+        # mel is ~8x the 1.0 s work (~354 ms/item on CPU -> ~135 min for
+        # 22.8k; ~2-5 ms/item on the A100 -> ~2 min).
+        from torchaudio.transforms import MelSpectrogram
+        gpu_mel = MelSpectrogram(sample_rate=SR, n_fft=1024, hop_length=320,
+                                 n_mels=N_MELS, f_min=50.0, f_max=8000.0).to(dev)
+        precompute_base_features(train_ds, dev, gpu_mel)
+        precompute_base_features(eval_ds, dev, gpu_mel)
     if args.real_noise and not args.smoke:
-        load_noise_bank(Path(args.real_noise))
+        load_noise_bank(Path(args.real_noise), mel=gpu_mel)
         if not NOISE_BANK:
             print(f"--real-noise: no .npy in {args.real_noise} "
                   f"-> white noise fallback")
 
-    t0 = time.time()
-    for p, _, _, _ in train_ds.items:
-        train_ds._base_feat(p)
-    for p, _, _, _ in eval_ds.items:
-        eval_ds._base_feat(p)
-    print(f"base features: {len(BASE_FEAT_CACHE)} cached in "
-          f"{time.time() - t0:.0f}s", flush=True)
-
+    if args.smoke:
+        # lazy base features for the 96 smoke items (CPU, ~35 ms each)
+        t0 = time.time()
+        for p, _, _, _ in train_ds.items:
+            train_ds._base_feat(p)
+        for p, _, _, _ in eval_ds.items:
+            eval_ds._base_feat(p)
+        print(f"base features: {len(BASE_FEAT_CACHE)} cached (CPU, smoke) in "
+              f"{time.time() - t0:.0f}s", flush=True)
     tr = DataLoader(train_ds, batch_size=args.batch, shuffle=True, num_workers=0)
     va = DataLoader(eval_ds, batch_size=args.batch, num_workers=0)
 
-    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     m = VCMTwoHead(len(CLASSES)).to(dev)
-    print(f"device: {dev}")
     opt = torch.optim.AdamW(m.parameters(), lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=args.epochs)
     if args.class_weights:

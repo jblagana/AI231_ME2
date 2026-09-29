@@ -312,16 +312,44 @@ is the path. Document this in the writeup.
 
 | day | A2 milestone |
 |---|---|
-| 09-30 (today) | Plan written ✅; regenerate 3.0s dataset (re-slice existing TTS) |
-| 10-01 | A2 train (50 ep, HPC); eval command + slot accuracy |
-| 10-02 | If A2 ≥ v1i: demo polish with slot values in the mock device UI;
-         if A2 < v1i: fall back to v1i (command-only, slots out of scope) |
-| 10-03 | **Deadline** — ship whichever is better |
+| 09-30 (today) | Plan ✅; build (slots/model/train/eval) ✅; train 50 ep ✅; eval ✅ — **A2 = 0.889 cmd, ships** |
+| 10-01 | Demo polish with slot values in the mock device UI (categorical slots) |
+| 10-02 | Buffer: number-slot decoder spike (CTC) if time, else document as next step |
+| 10-03 | **Deadline** — ship A2 (0.889 command + categorical slot head) |
 
 **Fallback:** if A2 underperforms v1i on command accuracy, the demo ships
 v1i (0.8618, command-only) and the slot head is documented as "next step."
 The 3.0s window alone (without the slot head) is still a valid A2 — the
 window fix attacks the 63.7% flagged-error bucket regardless of the slot head.
+
+### Result (2026-09-30) — A2 ships as the new command model
+
+Trained 50 ep on n002 (A100, GPU 6, ~8 s/ep, ~7 min), v1g recipe + class
+weights + real MUSAN noise, full retrain from scratch (no warm-start).
+Eval n=11,400 (speaker-disjoint):
+
+| metric | A2 (this run) | v1i baseline | delta |
+|---|---|---|---|
+| **command acc** | **0.889** | 0.8618 | **+2.7 pp** |
+| slot acc (bonus) | **0.741** | — | — |
+
+The 3.0 s window fix works — A2 beats v1i on command, so the fallback is NOT
+triggered. The slot head is a bonus: categorical slots are demo-ready
+(set_reminder 0.932, make_call 0.932, set_alarm 0.846); number-word slots are
+weak (dim_lights 0.326, set_temperature 0.539, set_timer 0.588) — number words
+("twenty/eighteen/fifty/seventy") are acoustically near-identical at 1.6 kHz
+mel, so a number decoder / mini-ASR is the production path (the CTC lever in
+Future Work). Weakest command class: media_control 0.754 (short "pause/stop"
+clips shared with play_music — top confusions media_control<->play_music).
+
+Implementation notes (verified, see `a2_notes.md`): right-align the 3.0 s
+window (pad LEFT) so the slot word sits at the tail; slot head reads the last 8
+of 18 conv time cells (a front slice would drop make_call's early slot word);
+GPU precompute of base log-mels (3.0 s mel is ~8x the 1.0 s work — ~135 min on
+CPU, ~2 min on A100); slot label folded into the dataset item tuple so the
+shuffle keeps (clip, slot) aligned.
+
+Checkpoint: `runs/v1a2/vcm_a2_best.pt` (100,086 params, ~1 MB ONNX).
 
 ## Benchmark (collective task — our proposal, post to group)
 Per the 09-24 group protocol (N non-owner evaluators, each command × N, logs required):

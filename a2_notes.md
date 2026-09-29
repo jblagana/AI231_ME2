@@ -45,12 +45,51 @@ n002.ai.internal (A100). Dataset: data/raw_v1i (11-class, .raw s16le + manifest.
 v1i baseline: 0.8618 cmd acc. Fallback: if A2 < v1i, ship v1i command-only.
 
 ## Status
-- [ ] verify n002 data (.raw + durations + v1i timing)
-- [ ] slots.py + self-test
-- [ ] model_a2.py + smoke
-- [ ] train_a2.py
-- [ ] eval_a2.py
-- [ ] commit + push local
-- [ ] sync to n002, smoke
-- [ ] train (50 ep)
-- [ ] eval + report
+- [x] verify n002 data (.raw + durations + v1i timing)
+  - 22,800 .raw files (no .mp3), 11 classes, median 2.35s, p90 2.95s, 92% <= 3.0s
+  - v1i: 30 ep, ~3.2s/ep, best 0.862 (ep 27)
+- [x] slots.py + self-test (63/63)
+- [x] model_a2.py + smoke (100,086 params, shapes verified)
+- [x] train_a2.py (dual loss, right-aligned 150-frame, v1g recipe)
+- [x] eval_a2.py (cmd + slot acc + confusions)
+- [x] commit b4f534b + push
+- [x] sync to n002, smoke (cuda, 96 clips, 1 ep OK)
+- [x] train (50 ep, GPU 6, ~8 s/ep, ~7 min)
+- [x] eval + report
+
+## RESULT (2026-09-30, runs/v1a2/vcm_a2_best.pt, eval n=11400)
+- **command acc 0.889** (v1i baseline 0.8618) → **+2.7 pp**. The 3.0 s window
+  fix works — A2 is the new champion on command.
+- **slot acc 0.741** overall. By slot type:
+  - categorical slots STRONG: set_reminder 0.932, make_call 0.932, set_alarm 0.846
+  - number-word slots WEAK: dim_lights 0.326, set_temperature 0.539, set_timer 0.588
+  - (number words "twenty/eighteen/fifty/seventy" are acoustically near-identical
+    at 1.6 kHz mel; a number decoder / mini-ASR is the production path — the CTC
+    lever already in Future Work)
+- per-class cmd: set_temperature 0.999, set_timer 0.962, make_call 0.946,
+  ask_time 0.928, set_reminder 0.925, set_alarm 0.924, control_lights 0.868,
+  play_music 0.861, ask_weather 0.850, dim_lights 0.824, media_control 0.754
+  (media_control is the weakest — "pause/stop/skip" are short + shared with
+  play_music; the top confusions are media_control<->play_music<->make_call)
+- top cmd confusions: media_control->play_music 167, media_control->make_call
+  160, control_lights->media_control 99, play_music->media_control 88
+- **Decision: A2 ships as the new command model (0.889 > 0.8618).** The slot
+  head is a bonus (categorical slots demo-ready; number slots need a decoder).
+  Fallback to v1i is NOT needed — A2 beats it on command.
+
+## Key build decisions (verified, not guessed)
+- **Right-align the 3.0 s window** (pad LEFT), not center: the slot word is the
+  LAST word, so it must sit at the tail where the slot head reads. A center
+  alignment put short clips' slot word ("call mom") in the middle, outside the
+  tail slice. Command head uses global max (alignment-invariant), so right-align
+  costs it nothing.
+- **Slot head reads TAIL cells** (last 8 of 18), not a front slice: make_call's
+  slot word is at cell ~1.2 (short clip), so a front slice [K:] would drop it.
+  A back slice [-8:] captures the slot word for ALL clip lengths (verified
+  _a2_cellprobe.py: last-word-start cell ranges 1.2 (call) to 11 (timer)).
+- **GPU precompute of base log-mels**: the 3.0 s mel is ~8x the 1.0 s work
+  (~354 ms/item on CPU -> ~135 min for 22.8k; ~2-5 ms/item on A100 -> ~2 min).
+  Precompute on GPU into a CPU RAM cache; per-item training path stays a lookup.
+- **Slot label folded into the items tuple** (not a parallel list) so the
+  single shuffle keeps (clip, slot) aligned — a parallel list desyncs after
+  shuffle (caught in smoke: eval slot coverage 0%).
