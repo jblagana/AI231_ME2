@@ -2,7 +2,13 @@
 
 Architecture (PLAN.md): 80-bin log-mel, 1 s window @ 16 kHz, 20 ms hop
 (50 frames). 3 conv blocks (32/64/128 filters, 3x3, maxpool) -> global
-avg pool -> dropout -> FC. Target < 1 M params.
+pool -> dropout -> FC. Target < 1 M params.
+
+Pooling: v1-v1f used AdaptiveAvgPool2d (averages the whole 50-frame time
+axis, so a ~10-15-frame verb gets diluted into the boilerplate mean).
+v1g switches to AdaptiveMaxPool2d — lets the most salient frame (the verb)
+win instead of being averaged out. Same state_dict shape (pools have no
+params), so a v1e/v1f checkpoint still loads for a warm-start A/B.
 
 Usage:
   python src/model.py --smoke      # forward-pass + param count check
@@ -33,7 +39,11 @@ class VCM(nn.Module):
             nn.Conv2d(64, 128, 3, padding=1), nn.BatchNorm2d(128), nn.ReLU(),
             nn.MaxPool2d(2),
         )
-        self.pool = nn.AdaptiveAvgPool2d(1)
+        # v1g: max-pool over the full (freq, time) plane instead of avg.
+        # Same output shape (128,1,1) -> same state_dict layout, so a
+        # v1e/v1f checkpoint still loads for a warm-start A/B. Lets the
+        # most salient frame (the verb) win instead of being averaged out.
+        self.pool = nn.AdaptiveMaxPool2d(1)
         self.fc = nn.Sequential(
             nn.Dropout(dropout),
             nn.Linear(128, n_classes),
