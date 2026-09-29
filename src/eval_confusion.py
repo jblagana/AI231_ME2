@@ -28,13 +28,15 @@ def main():
     ap.add_argument("--ckpt", default="runs/v1f/vcm_v1.pt")
     ap.add_argument("--split", default="eval")
     ap.add_argument("--batch", type=int, default=256)
+    ap.add_argument("--pool", default="max",
+                    choices=["max", "fw_mean", "fw_max"])
     args = ap.parse_args()
 
     data = Path(args.data)
     ckpt = torch.load(args.ckpt, map_location="cpu")
     # accept either a raw state_dict or a {"model": state_dict} wrapper
     sd = ckpt.get("model", ckpt) if isinstance(ckpt, dict) else ckpt
-    model = VCM(len(CLASSES))
+    model = VCM(len(CLASSES), pool=args.pool)
     missing = model.load_state_dict(sd, strict=False)
     if missing.missing_keys:
         print(f"WARN missing keys: {missing.missing_keys}", file=sys.stderr)

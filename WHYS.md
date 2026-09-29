@@ -4,6 +4,91 @@ The "why" behind each architecture decision. Source of truth for the
 design/methodology section of the writeup and for class presentation.
 Newest rationale first; each entry: decision → why → what was rejected.
 
+## 2026-09-29 — Why v1h "front-weighted" pooling was a sign bug (and the meta-rule it forced)
+
+**What we thought:** v1h swapped v1g's `AdaptiveMaxPool2d(1)` for a
+`FrontWeightedPool` (front-weighted time-mean + max-over-freq) to preserve the
+*leading* word ("what"/"set"/"play") that global max-pool discards. It scored
+**0.7117 vs v1g 0.8343 (−0.1226)** and we concluded "front-weighting is dead."
+
+**What was actually true:** the ramp was built as
+`w = ratio ** arange(0, T)` (ratio 1.5, T 6) → normalized
+`[0.048, 0.072, 0.108, 0.162, 0.244, 0.365]` — the **last** time cell got
+**7.6× the weight of the first**. The pool was **back-weighted**, contradicting
+its own docstring. So v1h's −0.12 measured *back*-weighted pooling (tail-biased
+onto the shared content words — "play/pause **music**", "…for **tomorrow**"),
+**not front-weighting.** The "front is the discriminator" hypothesis was never
+properly tested. **Verdict "front-weighting is dead" retracted** pending v1h2.
+
+**Fix (v1h2):** flip the ramp to `arange(T-1, -1, -1)` → `[0.365, 0.244, …,
+0.048]` (front heaviest, same 7.6:1 ratio). A second arm, `FrontBiasedMaxPool`
+(v1j), applies the same front ramp then **max** over time (salience-first,
+front breaks ties) instead of mean — so we test "front-weighted mean" vs
+"front-biased max" vs v1g's plain max in one A/B.
+
+**Meta-rule (ratified):** *any arch change that regresses >0.05 gets a
+code-audit step — what actually changed vs what was intended — before the
+hypothesis is declared dead.* A −0.12 regression is large enough to be a bug,
+not a null result; check the diff before writing the obituary.
+
+**Re-test result (v1h2/v1j, 2026-09-29):** with the ramp fixed, the front
+pools still lose to v1g's plain max — **v1h2 (fw_mean) 0.7698 (−0.0645)**,
+**v1j (fw_max) 0.8104 (−0.0239)** — and they *hurt* the play↔media cluster
+(v1h2 media→play 130→214, play→media 172→134; v1j media→play 171, play→media
+81). So the "front is the discriminator" hypothesis is **dead, correctly
+measured this time** (bug fixed, ramp points front, still loses). The leading
+word is *not* where the separation lives — the shared content word still is.
+The learned-attention bet (PLAN Lever 3) is re-priced **down**; the path is
+the data-side levers (v1i ask split ✅ +0.0275, v1k robustness recipe).
+
+## 2026-09-29 — Why the v1k robustness recipe (SpecAug+SNR0-25+reverb) is NOT adopted for the final train
+
+**Decision:** v1k tested the 10-03 final pooled train's augmentation recipe as
+a warm-start A/B vs v1g: SpecAugment + SNR 0–25 (was 5–25) + speed jitter
+0.9–1.1 (was 0.95–1.05) + light mel-domain reverb, on the *unchanged* v1g
+max-pool arch.
+
+**Result:** **0.7353 (−0.0990 vs v1g 0.8343)**, train loss ~1.10 vs v1g's
+~0.34 (clear underfit), and the tracked pairs blew up (ask→set_reminder
+134→380, media→play 130→338). Per the pre-registered rule (≥ v1g → adopt),
+**v1k is rejected** — keep the v1g recipe for the final.
+
+**Why it failed (mechanism, hypothesis):** the recipe stacks *four*
+augmentation changes at once, each of which widens the input distribution the
+model must memorize. A 30-epoch *warm-start* (conv features already frozen-ish
+from v1g) can't re-fit to that much new variance — it underfits. The
+individual ingredients may still be worth it (SNR 0–25 directly serves the
+benchmark's SNR-5 robustness item), but they must be **ablated one at a time**
+and given a longer/scratch train, not bolted on as a bundle to a warm-start.
+Lesson: a robustness recipe is a *final-train* decision, not a warm-start A/B.
+
+## 2026-09-29 — Why v1g switched the global pool from avg to max
+
+**Decision:** `model.py` global pool `AdaptiveAvgPool2d(1)` →
+`AdaptiveMaxPool2d(1)` (one line; pools have no params, so the v1f checkpoint
+warm-starts with an identical state_dict shape).
+
+**Why:** the v1f confusion audit showed the error concentrated in
+verb-differing clusters (media 416, lights 301). The global **avg** pool
+collapses the whole 50-frame time axis into a mean, so the ~10–15-frame verb
+gets **diluted into the boilerplate** ("the", "music", "some") that dominates
+the clip. **Max** lets the single most salient cell win instead of averaging it
+out — a strict superset of what avg sees.
+
+**Result (n003, same data/flags as v1f, 30ep, MUSAN):** v1f 0.7554 → **v1g
+0.8355 (+0.080), all 10 classes up, none down**. The two predicted clusters
+dropped: media 416→302, lights 301→187. Confirms the avg-pool was *the*
+ceiling, not the data (v1f's data doubling did nothing *because* the avg-pool
+then averaged the new verb-variety away).
+
+**Where max still falls short (the next lever):** max picks the *one loudest*
+cell, which for "play music" vs "pause music" is usually the **shared** word
+"music" — so both classes collapse onto the same cell. Max is *unlearned*.
+The principled fix is a **learned frame-level attention** (softmax over frames →
+weighted sum) so the model reads the *verb* frame instead of the loudest noun —
+but that needs finer time resolution (the convs already downsample 50→~6 cells)
+and is the harder, smaller-gain step. See PLAN.md "Lever analysis."
+
 ## 2026-09-27 — Why the wake gate is a *separate* model, not a head on the VCM
 
 **Decision:** two models — a tiny 2-class **gate** (wake / no-wake) always on
@@ -128,6 +213,17 @@ pause/stop/next/volume as its own class.
 (09-24 group protocol) — deviating makes our numbers incomparable. "Play
 music" is a command in its own right (start playback), distinct from
 controlling playback.
+
+**Re-affirmed with the real reason (boss, 2026-09-29):** the v1f/v1g confusion
+audit made merging play_music into media_control look like the free +0.0265 win
+(the spec's own "No.1 → No.8" fold). Boss closed it: **play_music is a distinct
+*outcome*, not just a distinct phrase.** "play <title>" plays a specific song
+from a fixed list, "play music" (no title) plays a random available track, and
+"play <unavailable title>" reports no match — three different app responses that
+pause/stop never produce. A merged class can't drive three different actions, so
+the split is required by the *app contract*, not the benchmark. This is why the
+play_music↔media_control cluster (302 mutual errors) is **not fixable by
+taxonomy** — it can only be attacked by the arch (leading-frame attention).
 
 ## 2026-09-25 — Why a wake word at all (in scope, boss-ratified post-spec)
 

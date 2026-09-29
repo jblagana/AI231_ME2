@@ -8,6 +8,86 @@ log update and before `git push`. `done` = **pushed to the remote repo**.
 
 ---
 
+## 2026-09-29 — "Handoff (boss-ratified): v1h pool SIGN BUG + v1h2/v1j/v1k A/B"
+Status: done (local) — patch applied to HPC `~/vcm/src` + local tree, smoke
+gate passed, all three arms trained + eval'd. Awaiting push (with v1i).
+### Instruction (verbatim)
+> Handoff from main chat (boss-ratified), UPDATED: the v1h pool had a SIGN BUG
+> - FrontWeightedPool's ramp was BACK-weighted 7.6:1 (arange(0,T) with ratio
+> 1.5 puts the largest weight on the LAST time cell, contradicting the
+> docstring), so v1h's -0.12 measured back-weighted pooling and the
+> 'front-weighting is dead' verdict is retracted. Boss added a THIRD arm: v1k =
+> data-side A/B on the unchanged v1g arch (SpecAugment + SNR 0-25 + jitter
+> 0.9-1.1 + light reverb, gated by --recipe v1k, which stays OFF for the pool
+> arms so they remain pure). Full patch + A/B plan is in repo root
+> _HANDOFF_pool_fix.md - read it, then: (1) apply the model.py/train.py/
+> eval_confusion.py patch INCLUDING the v1k recipe to HPC ~/vcm/src (defaults
+> --pool max / --recipe v1g keep v1i zero-change), (2) pass the smoke gate
+> incl. the v1k recipe checks, (3) launch all THREE arms in parallel with v1i
+> - v1h2 (pool fw_mean, recipe v1g), v1j (pool fw_max, recipe v1g), v1k (pool
+> max, recipe v1k) - all 30-epoch warm-starts from runs/v1g/vcm_v1.pt, (4)
+> judge per the pre-registered per-cluster decision rules in the file (v1k
+> judged separately: >= v1g means its recipe is adopted for the 10-03 final
+> pooled train), (5) log the bug + meta-rule and record v1k in PLAN.md lever
+> analysis + WHYS.md, commit/push own-work-only, reconciling the stale local
+> model.py. v1i stays priority - the arms are parallel, not blocking.
+### Interpretation (agent — user may edit this section)
+- **Bug confirmed + fixed:** `FrontWeightedPool.forward` ramp
+  `arange(0,T)` → back-weighted (last cell 7.6× the first). v1h's −0.12
+  measured *back*-weighting, not front-weighting. Verdict retracted.
+- **Patch applied** (both HPC `~/vcm/src` and local OneDrive tree): model.py
+  (v1h2 ramp flip + `FrontBiasedMaxPool` v1j + CLI `--pool`), train.py
+  (`--pool` + `--recipe` v1k: SpecAugment + SNR 0–25 + jitter 0.9–1.1 + light
+  reverb, train-only, v1g default keeps pool arms pure), eval_confusion.py
+  (`--pool` passthrough — pools have no params so a wrong-pool load is silent).
+- **Two bugs in the handoff reference code, caught by the smoke gate:**
+  (a) `light_reverb` passed a 4-D tensor to `avg_pool1d` (needs 2–3-D) → fixed
+  to pool over time + pad back; (b) the `[0,1]` range check is wrong — base
+  log-mel is `dB/20+0.5` and legitimately reaches ~1.69, so the real check is
+  finite + shape + A/B-purity.
+- **A/B purity proven:** new-code `--recipe v1g` path is **bit-identical** to
+  the pre-patch pipeline on a fixed seed (real MUSAN bank) → the patch leaves
+  the v1g recipe untouched, so v1i is zero-change.
+- **Repo reconciliation:** HPC `~/vcm` was behind local/origin (missing SLURP
+  + v1g max-pool + v1e MUSAN commits); local OneDrive was the canonical repo.
+  The patch was applied to the LOCAL tree (at HEAD) as clean UTF-8 and is the
+  committed source of truth; HPC's working copy is the training copy.
+- **commands.py is 10-class at HEAD** (v1i's 11-class split is uncommitted on
+  HPC only, preserved as a backup). The pool arms train on 10-class `raw_v1f`.
+- v1i (11-class split) = **0.8618**, the new shipping model; the arms are
+  parallel, not blocking.
+
+---
+
+## 2026-09-29 — "update the records first"
+Status: done (local) — PLAN.md + WHYS.md updated with the v1g result, the
+taxonomy-audit decisions, and the lever analysis. Awaiting push.
+### Instruction (verbatim)
+> update the records first
+### Interpretation (agent — user may edit this section)
+- Boss wants the docs to reflect the post-v1g state before any new work.
+  Updated (this session):
+  - **PLAN.md** — robustness #2 (ask_question split) now marked confirmed
+    clean 2-way (8 weather / 5 time, verified against `commands.py`); new
+    "Lever analysis (2026-09-29, post-v1g)" section: v1g = 0.8355 best,
+    A1 (play→media) + A2 (dim→control) both OFF the table (boss), the
+    play_music↔media cluster (302) now unfixable by taxonomy, ask_question
+    split ceiling ~0.868, leading-frame attention as the only lever past
+    ~0.87, "add emphasis on the what" as *audio* rejected (synthetic
+    artifact), Spotify = app-layer out of scope.
+  - **WHYS.md** — new "Why v1g switched the global pool from avg to max"
+    entry (mechanism + result + where max still falls short); the
+    "play music kept separate" entry re-affirmed with the boss's real
+    reason (play <title> / play music / play <unavailable> = three
+    different app responses → the class is required by the app contract).
+- Decisions logged (boss, 2026-09-29): A2 off the table; A1 killed by the
+  play_music argument-structure point; ask_question split = clean 2-way
+  (8/5), not the earlier 3-way guess; Spotify = stub for the demo.
+- Not yet done: push (boss said "update the records first" — push on his
+  go, or fold into the v1h commit).
+
+---
+
 ## 2026-09-27 — "make sure u log the process in a python notebook so i can check it while ur working. also include there the issues u encountered and the fix or workaround"
 Status: in progress — live notebook at notebooks/vcm_v1_training.ipynb (diagnosis + issues + fixes + train)
 ### Instruction (verbatim)

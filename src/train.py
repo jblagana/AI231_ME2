@@ -166,10 +166,49 @@ def preload_raw(root: Path) -> int:
     return n
 
 
+def spec_aug(lm, n_time=2, max_t=10, n_freq=2, max_f=8):
+    """Train-only SpecAugment on normalized log-mel (1, 80, 50), [0,1]
+    domain: zero out random contiguous frame/mel spans (0.0 = silence
+    floor). Time masking forces the model to use MULTIPLE time cells —
+    directly attacks the 'one loud cell wins' pathology (v1h post-mortem)."""
+    T, F = lm.shape[-1], lm.shape[-2]
+    for _ in range(n_time):
+        w = random.randint(1, max_t); s = random.randint(0, T - w)
+        lm[..., s:s + w] = 0.0
+    for _ in range(n_freq):
+        w = random.randint(1, max_f); s = random.randint(0, F - w)
+        lm[..., s:s + w, :] = 0.0
+    return lm
+
+
+def light_reverb(lm, mix=0.3, k=5):
+    """Mel-domain proxy for light room reverb (early-reflection smear):
+    blend in a k-frame box-smoothed copy. Train-only.
+
+    lm: (1, F, T) = (1, 80, 50). avg_pool1d pools over the TIME axis (L=T)
+    for each of the F mel channels -> (1, F, T-k+1); pad back to T so the
+    shape is preserved (the box-smear is what matters, not the 4 dropped
+    edge frames)."""
+    sm = nn.functional.avg_pool1d(lm, k, stride=1)   # (1, F, T-k+1)
+    if sm.shape[-1] < lm.shape[-1]:
+        pad = lm.shape[-1] - sm.shape[-1]
+        sm = nn.functional.pad(sm, (0, pad))          # (1, F, T)
+    return lm * (1 - mix) + sm * mix
+
+
 class VCMDataset(Dataset):
-    def __init__(self, root: Path, split: str, augment: bool = False):
+    def __init__(self, root: Path, split: str, augment: bool = False,
+                 recipe: str = "v1g"):
         self.root = root
         self.augment = augment
+        self.recipe = recipe
+        # per-recipe augmentation constants (v1k = v1g + wider SNR/jitter +
+        # SpecAugment + light reverb; the 10-03 final pooled train's recipe,
+        # tested here as a warm-start A/B vs v1g).
+        self._jit = (0.9, 1.1) if recipe == "v1k" else (0.95, 1.05)
+        self._snr = (0.0, 25.0) if recipe == "v1k" else (5.0, 25.0)
+        self._spec = recipe == "v1k"
+        self._reverb = recipe == "v1k"
         self.items = []
         mf = root / "manifest.jsonl"
         if mf.exists():
@@ -212,7 +251,7 @@ class VCMDataset(Dataset):
             # 2026-09-28). Equivalent to time-stretching the audio: frames
             # are evenly spaced in time, so stretching the frame axis is
             # exactly a pitch-preserving speed change for the features.
-            rate = random.uniform(0.95, 1.05)
+            rate = random.uniform(*self._jit)
             T2 = int(round(x.shape[-1] / rate))
             x = _resample_mel(x, T2)
             if x.shape[-1] < N_FRAMES:
@@ -231,7 +270,7 @@ class VCMDataset(Dataset):
             # Random 1 s window, random time offset, then SNR-matched.
             # White Gaussian is the fallback when the bank is empty
             # (e.g. --smoke before v1e_dl.py has run).
-            snr_db = random.uniform(5.0, 25.0)
+            snr_db = random.uniform(*self._snr)
             if NOISE_BANK:
                 nz = random.choice(NOISE_BANK)
                 W = N_FRAMES
@@ -247,6 +286,14 @@ class VCMDataset(Dataset):
             nz_p = nz.pow(2).mean().clamp_min(1e-8)
             scale = torch.sqrt(sig_p / (nz_p * 10 ** (snr_db / 10.0)))
             x = x + nz * scale
+            # v1k (train-only): light reverb (early-reflection smear) then
+            # SpecAugment (time masking forces use of MULTIPLE time cells —
+            # attacks the 'one loud cell wins' pathology). Order: speed ->
+            # gain -> noise -> reverb -> spec_aug.
+            if self._reverb:
+                x = light_reverb(x)
+            if self._spec:
+                x = spec_aug(x)
         return x, CLASSES.index(cls)
 
 
@@ -257,6 +304,11 @@ def main():
     ap.add_argument("--batch", type=int, default=32)
     ap.add_argument("--lr", type=float, default=3e-4)
     ap.add_argument("--out", default="runs/v1")
+    ap.add_argument("--pool", default="max",
+                    choices=["max", "fw_mean", "fw_max"],
+                    help="pool A/B: max=v1g champion, fw_mean=v1h2, fw_max=v1j")
+    ap.add_argument("--recipe", default="v1g", choices=["v1g", "v1k"],
+                    help="v1k = v1g recipe + SpecAugment + SNR 0-25 + jitter 0.9-1.1 + light reverb")
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--init-from", default=None,
                     help="checkpoint to warm-start from (e.g. runs/v1/vcm_v1.pt)")
@@ -271,7 +323,7 @@ def main():
     args = ap.parse_args()
 
     root = Path(args.data)
-    train_ds = VCMDataset(root, "train", augment=True)
+    train_ds = VCMDataset(root, "train", augment=True, recipe=args.recipe)
     eval_ds = VCMDataset(root, "eval", augment=False)
     if args.smoke:
         train_ds.items = train_ds.items[:64]
@@ -310,7 +362,7 @@ def main():
     va = DataLoader(eval_ds, batch_size=args.batch, num_workers=0)
 
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    m = VCM(len(CLASSES)).to(dev)
+    m = VCM(len(CLASSES), pool=args.pool).to(dev)
     if args.init_from:
         ckpt = Path(args.init_from)
         if not ckpt.exists():
