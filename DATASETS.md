@@ -98,6 +98,64 @@ timer/temperature/thermostat/remind/call/phone hits). Those four fall to
    group already has real-human coverage of all 10 tasks.
 4. **GSC v0.02 noise set** is the source for the noisy-condition eval (not the commands).
 
+## v2 data-source decision (2026-09-29, boss session)
+**Decision: REUSE SLURP audio as the v2 real-human backbone. Do NOT pivot to a
+new real-voice TTS replacement.** TTS is only a targeted filler for the 2
+classes with zero real corpus (`set_reminder`, `make_call`) — never the
+dataset backbone.
+
+**Why (the evidence chain, all verified this session):**
+1. v1e is TTS-on-TTS → 0.665. Fed through real SLURP voices → **0.101** with a
+   2-class collapse (play_music + set_reminder). The model is *broken* on real
+   voices, not merely "worse."
+2. Feature-statistics sanity check (`feature_stats.py`): SLURP log-mels are
+   **in-distribution** — spectral-envelope cosine **0.993** vs TTS, feature-scale
+   ratio ~1.4×, all 128 conv channels still fire (ch-std ratio 0.75). So the
+   collapse is **not** a feature-scale artifact → normalization won't fix it.
+3. Entropy probe (`entropy_probe.py`): mean softmax entropy **0.935 of max**
+   (near-flat), and confidence is uncorrelated with correctness (correct 2.145
+   vs wrong 2.153). The model is *not knowing*, not *knowing wrong*.
+4. **Conclusion:** the gap is a **representation gap** — the model never saw
+   real-voice *content*. Only real-human training data closes it. Synthetic
+   (any TTS, including TTS-over-real-reference) is what v1 already has and it
+   demonstrably fails on real voices.
+
+**The v2 combination (SLURP-centric, real-first):**
+| Class | v2 source (primary → fallback) |
+|---|---|
+| play_music, ask_question, control_lights, dim_lights, set_alarm, media_control (6) | **SLURP real** (~6,300 clips; relabel SLURP intent → our class via the `make_slurp_eval.py` map) |
+| set_timer, set_alarm (gap) | **Timers and Such** (real SetTimer/SetAlarm; 2,151 real utterances) |
+| set_temperature (gap) | **Fluent Speech Commands** (+ Snips SLU lighting fill) |
+| set_reminder, make_call (gap, **no real public corpus**) | **Ayla's pooled recordings** → **Common Voice** (filtered) → **real-voice TTS** (Chatterbox/Piper over a real reference) as last resort |
+- Keep a **subset of edge-tts as augmentation** to preserve class balance, but
+  real-human is the primary signal.
+
+**Why NOT a new real-voice TTS replacement (the full-dataset TTS route):**
+1. The sanity check proved the bottleneck is a *representation gap on
+   real-voice content*. TTS-over-real-reference is still synthetic — it will not
+   teach the model the real-voice content variation that broke it. v2's whole
+   point is real-human audio.
+2. SLURP is already downloaded (3.7 GB, sunk cost) and is the largest real
+   corpus available. Reusing it is the highest-value, lowest-cost move.
+3. A full TTS replacement costs generation + compute for a strictly worse signal.
+
+**Honest caveats:**
+- SLURP labels are its own 93-intent schema, not our 10-class spec — the
+  relabeling (SLURP intent → our class) must be applied to the full train+dev
+  splits, and phrasings differ from our TTS ("play some jazz" vs "play music").
+  That diversity is a *feature* for robustness, but the mapping must be audited
+  per class before training.
+- The 4 gap classes are thin in real data (Timers-and-Such = 2,151 real
+  utterances across 4 intents; reminder/call ≈ 0 real). The edge-tts
+  augmentation is what keeps those classes trainable — don't drop it.
+- **Worth a 1-clip experiment before committing:** does Chatterbox-over-real-ref
+  audio classify correctly on the v1e model? If yes, TTS-over-real-ref is a
+  legitimate gap-filler (real-enough); if no, it confirms only true recordings
+  work. Cheap to test, and it de-risks the reminder/call fill.
+- This decision is for the **10-class v2**. If demo scope shrinks to the 6
+  SLURP-covered classes, SLURP alone (real-only, no TTS) is sufficient and the
+  gap-class fill becomes optional.
+
 ## SLURP real-human eval set (built 2026-09-29, boss session)
 The cross-domain probe — feeds real SLURP voices through the TTS-trained VCM
 to get the "does it hold up on real people" number (Sir's ruling). Built, not
