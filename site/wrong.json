@@ -1,0 +1,415 @@
+{
+ "wrong": [
+  {
+   "key": "slot_set_alarm_00509",
+   "kind": "slot",
+   "phrase": "set an alarm for six pm",
+   "cmd_true": "six pm",
+   "cmd_pred": null,
+   "conf": 0.993,
+   "cls": "set_alarm",
+   "slot_true": "six pm",
+   "slot_pred": "six am"
+  },
+  {
+   "key": "slot_make_call_01376",
+   "kind": "slot",
+   "phrase": "give dad a call",
+   "cmd_true": "dad",
+   "cmd_pred": null,
+   "conf": 0.98,
+   "cls": "make_call",
+   "slot_true": "dad",
+   "slot_pred": "mom"
+  },
+  {
+   "key": "slot_set_reminder_01067",
+   "kind": "slot",
+   "phrase": "remind me to pay the bills",
+   "cmd_true": "pay the bills",
+   "cmd_pred": null,
+   "conf": 0.973,
+   "cls": "set_reminder",
+   "slot_true": "pay the bills",
+   "slot_pred": "take out the trash"
+  },
+  {
+   "key": "slot_set_alarm_00510",
+   "kind": "slot",
+   "phrase": "set an alarm for six pm",
+   "cmd_true": "six pm",
+   "cmd_pred": null,
+   "conf": 0.972,
+   "cls": "set_alarm",
+   "slot_true": "six pm",
+   "slot_pred": "six am"
+  },
+  {
+   "key": "slot_set_reminder_00033",
+   "kind": "slot",
+   "phrase": "remind me to buy groceries",
+   "cmd_true": "buy groceries",
+   "cmd_pred": null,
+   "conf": 0.966,
+   "cls": "set_reminder",
+   "slot_true": "buy groceries",
+   "slot_pred": "pay the bills"
+  },
+  {
+   "key": "slot_set_timer_01147",
+   "kind": "slot",
+   "phrase": "set a timer for forty five minutes",
+   "cmd_true": "forty five",
+   "cmd_pred": null,
+   "conf": 0.939,
+   "cls": "set_timer",
+   "slot_true": "forty five",
+   "slot_pred": "five"
+  },
+  {
+   "key": "slot_set_temperature_00937",
+   "kind": "slot",
+   "phrase": "set the thermostat to twenty two degrees",
+   "cmd_true": "twenty two",
+   "cmd_pred": null,
+   "conf": 0.916,
+   "cls": "set_temperature",
+   "slot_true": "twenty two",
+   "slot_pred": "eighteen"
+  },
+  {
+   "key": "slot_make_call_01678",
+   "kind": "slot",
+   "phrase": "give dad a call",
+   "cmd_true": "dad",
+   "cmd_pred": null,
+   "conf": 0.911,
+   "cls": "make_call",
+   "slot_true": "dad",
+   "slot_pred": "mom"
+  },
+  {
+   "key": "slot_set_timer_01146",
+   "kind": "slot",
+   "phrase": "set a timer for forty five minutes",
+   "cmd_true": "forty five",
+   "cmd_pred": null,
+   "conf": 0.894,
+   "cls": "set_timer",
+   "slot_true": "forty five",
+   "slot_pred": "five"
+  },
+  {
+   "key": "slot_set_temperature_00535",
+   "kind": "slot",
+   "phrase": "set the temperature to twenty eight degrees",
+   "cmd_true": "twenty eight",
+   "cmd_pred": null,
+   "conf": 0.89,
+   "cls": "set_temperature",
+   "slot_true": "twenty eight",
+   "slot_pred": "twenty six"
+  },
+  {
+   "key": "slot_dim_lights_00235",
+   "kind": "slot",
+   "phrase": "dim the lights to thirty percent",
+   "cmd_true": "thirty",
+   "cmd_pred": null,
+   "conf": 0.834,
+   "cls": "dim_lights",
+   "slot_true": "thirty",
+   "slot_pred": "eighty"
+  },
+  {
+   "key": "slot_dim_lights_00264",
+   "kind": "slot",
+   "phrase": "dim the lights to thirty percent",
+   "cmd_true": "thirty",
+   "cmd_pred": null,
+   "conf": 0.772,
+   "cls": "dim_lights",
+   "slot_true": "thirty",
+   "slot_pred": "fifty"
+  },
+  {
+   "key": "slot_set_reminder_01060",
+   "kind": "slot",
+   "phrase": "remind me to drink water",
+   "cmd_true": "drink water",
+   "cmd_pred": null,
+   "conf": 0.377,
+   "cls": "set_reminder",
+   "slot_true": "drink water",
+   "slot_pred": "take out the trash"
+  },
+  {
+   "key": "slot_set_reminder_00283",
+   "kind": "slot",
+   "phrase": "remind me at five pm",
+   "cmd_true": "five pm",
+   "cmd_pred": null,
+   "conf": 0.347,
+   "cls": "set_reminder",
+   "slot_true": "five pm",
+   "slot_pred": "tomorrow"
+  },
+  {
+   "key": "slot_make_call_01310",
+   "kind": "slot",
+   "phrase": "give dad a call",
+   "cmd_true": "dad",
+   "cmd_pred": null,
+   "conf": 0.322,
+   "cls": "make_call",
+   "slot_true": "dad",
+   "slot_pred": "brother"
+  },
+  {
+   "key": "slot_make_call_00786",
+   "kind": "slot",
+   "phrase": "call sister",
+   "cmd_true": "sister",
+   "cmd_pred": null,
+   "conf": 0.307,
+   "cls": "make_call",
+   "slot_true": "sister",
+   "slot_pred": "dad"
+  },
+  {
+   "key": "slot_set_alarm_00792",
+   "kind": "slot",
+   "phrase": "set an alarm for five am",
+   "cmd_true": "five am",
+   "cmd_pred": null,
+   "conf": 0.255,
+   "cls": "set_alarm",
+   "slot_true": "five am",
+   "slot_pred": "eight am"
+  },
+  {
+   "key": "slot_set_alarm_01399",
+   "kind": "slot",
+   "phrase": "wake me up at seven am",
+   "cmd_true": "seven am",
+   "cmd_pred": null,
+   "conf": 0.25,
+   "cls": "set_alarm",
+   "slot_true": "seven am",
+   "slot_pred": "eight am"
+  },
+  {
+   "key": "slot_dim_lights_00142",
+   "kind": "slot",
+   "phrase": "dim the lights to thirty percent",
+   "cmd_true": "thirty",
+   "cmd_pred": null,
+   "conf": 0.233,
+   "cls": "dim_lights",
+   "slot_true": "thirty",
+   "slot_pred": "twenty"
+  },
+  {
+   "key": "slot_dim_lights_00471",
+   "kind": "slot",
+   "phrase": "dim the lights to thirty percent",
+   "cmd_true": "thirty",
+   "cmd_pred": null,
+   "conf": 0.213,
+   "cls": "dim_lights",
+   "slot_true": "thirty",
+   "slot_pred": "seventy"
+  },
+  {
+   "key": "slot_set_temperature_01091",
+   "kind": "slot",
+   "phrase": "set the temperature to twenty six degrees",
+   "cmd_true": "twenty six",
+   "cmd_pred": null,
+   "conf": 0.198,
+   "cls": "set_temperature",
+   "slot_true": "twenty six",
+   "slot_pred": "twenty two"
+  },
+  {
+   "key": "slot_set_temperature_00573",
+   "kind": "slot",
+   "phrase": "set the temperature to twenty two degrees",
+   "cmd_true": "twenty two",
+   "cmd_pred": null,
+   "conf": 0.192,
+   "cls": "set_temperature",
+   "slot_true": "twenty two",
+   "slot_pred": "twenty six"
+  },
+  {
+   "key": "slot_set_timer_00491",
+   "kind": "slot",
+   "phrase": "set a timer for one minute",
+   "cmd_true": "one",
+   "cmd_pred": null,
+   "conf": 0.187,
+   "cls": "set_timer",
+   "slot_true": "one",
+   "slot_pred": "ten"
+  },
+  {
+   "key": "slot_set_timer_00836",
+   "kind": "slot",
+   "phrase": "start a timer for one minute",
+   "cmd_true": "one",
+   "cmd_pred": null,
+   "conf": 0.178,
+   "cls": "set_timer",
+   "slot_true": "one",
+   "slot_pred": "ten"
+  },
+  {
+   "key": "cmd_media_control__to__play_music_00593",
+   "kind": "cmd",
+   "phrase": "pause the music",
+   "cmd_true": "media_control",
+   "cmd_pred": "play_music",
+   "conf": 0.923
+  },
+  {
+   "key": "cmd_dim_lights__to__control_lights_00274",
+   "kind": "cmd",
+   "phrase": "dim the lights",
+   "cmd_true": "dim_lights",
+   "cmd_pred": "control_lights",
+   "conf": 0.903
+  },
+  {
+   "key": "cmd_media_control__to__play_music_00592",
+   "kind": "cmd",
+   "phrase": "pause the music",
+   "cmd_true": "media_control",
+   "cmd_pred": "play_music",
+   "conf": 0.891
+  },
+  {
+   "key": "cmd_media_control__to__play_music_00942",
+   "kind": "cmd",
+   "phrase": "pause the music",
+   "cmd_true": "media_control",
+   "cmd_pred": "play_music",
+   "conf": 0.878
+  },
+  {
+   "key": "cmd_dim_lights__to__control_lights_00275",
+   "kind": "cmd",
+   "phrase": "dim the lights",
+   "cmd_true": "dim_lights",
+   "cmd_pred": "control_lights",
+   "conf": 0.868
+  },
+  {
+   "key": "cmd_dim_lights__to__control_lights_00273",
+   "kind": "cmd",
+   "phrase": "dim the lights",
+   "cmd_true": "dim_lights",
+   "cmd_pred": "control_lights",
+   "conf": 0.86
+  },
+  {
+   "key": "cmd_set_reminder__to__set_timer_00942",
+   "kind": "cmd",
+   "phrase": "set a reminder for next week",
+   "cmd_true": "set_reminder",
+   "cmd_pred": "set_timer",
+   "conf": 0.846
+  },
+  {
+   "key": "cmd_media_control__to__make_call_00488",
+   "kind": "cmd",
+   "phrase": "quieter",
+   "cmd_true": "media_control",
+   "cmd_pred": "make_call",
+   "conf": 0.809
+  },
+  {
+   "key": "cmd_media_control__to__make_call_00487",
+   "kind": "cmd",
+   "phrase": "quieter",
+   "cmd_true": "media_control",
+   "cmd_pred": "make_call",
+   "conf": 0.791
+  },
+  {
+   "key": "cmd_play_music__to__media_control_00072",
+   "kind": "cmd",
+   "phrase": "play a song",
+   "cmd_true": "play_music",
+   "cmd_pred": "media_control",
+   "conf": 0.789
+  },
+  {
+   "key": "cmd_control_lights__to__media_control_00019",
+   "kind": "cmd",
+   "phrase": "lights off",
+   "cmd_true": "control_lights",
+   "cmd_pred": "media_control",
+   "conf": 0.755
+  },
+  {
+   "key": "cmd_media_control__to__make_call_00486",
+   "kind": "cmd",
+   "phrase": "quieter",
+   "cmd_true": "media_control",
+   "cmd_pred": "make_call",
+   "conf": 0.748
+  },
+  {
+   "key": "cmd_play_music__to__media_control_00071",
+   "kind": "cmd",
+   "phrase": "play a song",
+   "cmd_true": "play_music",
+   "cmd_pred": "media_control",
+   "conf": 0.718
+  },
+  {
+   "key": "cmd_play_music__to__media_control_00303",
+   "kind": "cmd",
+   "phrase": "play music",
+   "cmd_true": "play_music",
+   "cmd_pred": "media_control",
+   "conf": 0.699
+  },
+  {
+   "key": "cmd_control_lights__to__media_control_00020",
+   "kind": "cmd",
+   "phrase": "lights off",
+   "cmd_true": "control_lights",
+   "cmd_pred": "media_control",
+   "conf": 0.689
+  },
+  {
+   "key": "cmd_set_reminder__to__set_timer_00347",
+   "kind": "cmd",
+   "phrase": "add a reminder to water the plants",
+   "cmd_true": "set_reminder",
+   "cmd_pred": "set_timer",
+   "conf": 0.683
+  },
+  {
+   "key": "cmd_control_lights__to__media_control_00018",
+   "kind": "cmd",
+   "phrase": "lights off",
+   "cmd_true": "control_lights",
+   "cmd_pred": "media_control",
+   "conf": 0.671
+  },
+  {
+   "key": "cmd_set_reminder__to__set_timer_00288",
+   "kind": "cmd",
+   "phrase": "add a reminder to water the plants",
+   "cmd_true": "set_reminder",
+   "cmd_pred": "set_timer",
+   "conf": 0.65
+  }
+ ],
+ "n_wrong": 42,
+ "n_slot": 24,
+ "n_cmd": 18
+}

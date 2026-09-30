@@ -62,6 +62,20 @@
   .card .row audio{height:34px;flex:1;min-width:0}
   .card .phrase{font-size:12px;color:var(--dim);padding:0 14px 12px}
   .card .phrase code{color:var(--txt)}
+  /* wrong-clips section */
+  .filters{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+  .filters button{font:13px inherit;color:var(--txt);background:var(--chip);
+        border:1px solid var(--line);border-radius:99px;padding:5px 14px;cursor:pointer}
+  .filters button.on{border-color:var(--bad);color:var(--bad)}
+  .filters button:hover{border-color:var(--acc2)}
+  .card.wrong{border-color:#3a2530}
+  .card.wrong h3{color:var(--bad)}
+  .verdict{display:flex;gap:8px;padding:10px 14px 0;flex-wrap:wrap}
+  .vtag{font-size:12px;padding:3px 10px;border-radius:6px;background:var(--chip);
+        border:1px solid var(--line);color:var(--txt)}
+  .vtag b{color:var(--bad);font-weight:600}
+  .vtag .ok{color:var(--acc)}
+  .vtag .conf{color:var(--dim);font-size:11px}
   /* why list */
   .whyitem{background:var(--panel);border:1px solid var(--line);border-radius:10px;
            padding:14px 16px;margin-bottom:12px}
@@ -74,11 +88,12 @@
 </head>
 <body>
 <header>
-  <h1>VCM — Voice Command Model <small>· AI231 ME2 · on-device, 10 classes, 94K params</small></h1>
-  <div class="meta">Deadline Sat 2026-10-03 · RPi 4B 8GB · PyTorch → ONNX · dataset: edge-tts, speaker-disjoint</div>
+  <h1>VCM — Voice Command Model <small>· AI231 ME2 · on-device, 11 classes + slot head, 100K params</small></h1>
+  <div class="meta">Deadline Sat 2026-10-03 · RPi 4B 8GB · PyTorch → ONNX · dataset: edge-tts, speaker-disjoint · A2 two-head (3.0 s window) trained 2026-09-30</div>
   <nav>
     <a href="#arch">Architecture</a>
     <a href="#timeline">Timeline</a>
+    <a href="#wrong">Wrong clips</a>
     <a href="#dataset">Dataset</a>
     <a href="#whys">Design Whys</a>
   </nav>
@@ -88,11 +103,12 @@
 <section id="overview">
   <h2>At a glance</h2>
   <div class="stats">
-    <div class="stat"><b>13,787</b><span>clips generated (13,800 target)</span></div>
-    <div class="stat"><b>10</b><span>command classes</span></div>
-    <div class="stat"><b>94K</b><span>model params (target &lt;1M)</span></div>
-    <div class="stat"><b>40</b><span>TTS voices (20 train / 20 eval, 0 overlap)</span></div>
-    <div class="stat"><b>80×50</b><span>log-mel input (1 s @ 16 kHz)</span></div>
+    <div class="stat"><b>22,800</b><span>clips generated (v1i, 11 classes)</span></div>
+    <div class="stat"><b>11</b><span>command classes</span></div>
+    <div class="stat"><b>100K</b><span>model params, two-head (target &lt;1M)</span></div>
+    <div class="stat"><b>0.889</b><span>command accuracy (A2, 11,400 eval clips)</span></div>
+    <div class="stat"><b>0.741</b><span>slot accuracy (A2, parametric clips)</span></div>
+    <div class="stat"><b>80×150</b><span>log-mel input (3.0 s @ 16 kHz, 20 ms hop)</span></div>
     <div class="stat"><b>~ms</b><span>inference on Pi (ONNX Runtime)</span></div>
   </div>
 </section>
@@ -100,11 +116,11 @@
 <section id="arch">
   <h2>Architecture <span class="tag">mic → gate → VCM → device</span></h2>
   <div class="flow">
-    <div class="node"><h3>Microphone</h3><p>16 kHz, 1 s windows, 20 ms hop</p></div>
+    <div class="node"><h3>Microphone</h3><p>16 kHz, 3.0 s windows, 20 ms hop</p></div>
     <div class="arrow">→</div>
     <div class="node gate"><h3>Wake gate</h3><p>2-class CNN (wake / no-wake). Always on, tiny, conservative. Trains on ~1–2k clips.</p></div>
     <div class="arrow">→ <span style="font-size:11px;color:var(--dim)">only if woken</span></div>
-    <div class="node"><h3>VCM (intent)</h3><p>3-conv-block CNN, 94K params → 10-way softmax. Tier-1 stretch: + slot head (36-way, joint CE loss).</p></div>
+    <div class="node"><h3>VCM (intent + slot)</h3><p>A2 two-head: 3-conv-block CNN, 100K params → command head (11-way, global max) + slot head (6 per-class sub-heads, 43 values, reads the tail cells where the slot word lives). 3.0 s window, right-aligned.</p></div>
     <div class="arrow">→</div>
     <div class="node"><h3>Mock device</h3><p>POST /device/command → light / timer / thermostat / music / dialer</p></div>
   </div>
@@ -118,12 +134,28 @@
   <ul class="tl">
     <li><span class="d">09-25 (Fri)</span><span>Scaffolding, env, TTS dataset gen, model v1 written</span><span class="st done">done</span></li>
     <li><span class="d">09-26 (Sat)</span><span>First train on generated data, sanity metrics</span><span class="st done">done</span></li>
-    <li><span class="d">09-27 (Sun)</span><span>Augmentation pass, retrain, benchmark harness</span><span class="st now">today</span></li>
-    <li><span class="d">09-28–29</span><span>RPi demo (mic → gate → VCM → mock device), collect classmate eval data</span><span class="st next">next</span></li>
-    <li><span class="d">09-30</span><span>Final train on pooled collective dataset, final numbers</span><span class="st next">next</span></li>
+    <li><span class="d">09-27 (Sun)</span><span>Augmentation pass, retrain, benchmark harness</span><span class="st done">done</span></li>
+    <li><span class="d">09-28–29</span><span>RPi demo (mic → gate → VCM → mock device), collect classmate eval data</span><span class="st done">done</span></li>
+    <li><span class="d">09-30</span><span>A2 two-head (3.0 s window + slot head): build, train, eval — 0.889 cmd / 0.741 slot</span><span class="st now">today</span></li>
     <li><span class="d">10-01–02</span><span>Demo polish, writeup, buffer</span><span class="st next">next</span></li>
     <li><span class="d">10-03</span><span><b>Deadline</b></span><span class="st next">next</span></li>
   </ul>
+</section>
+
+<section id="wrong">
+  <h2>Wrong clips <span class="tag">A2 two-head · eval-split clips the model got wrong · mel = exact model input (3.0 s, right-aligned; red band = slot head's read region)</span></h2>
+  <div class="stats" style="margin-bottom:14px">
+    <div class="stat"><b>42</b><span>wrong clips (24 slot + 18 command)</span></div>
+    <div class="stat"><b>0.889</b><span>command accuracy (11,400 eval clips)</span></div>
+    <div class="stat"><b>0.741</b><span>slot accuracy (parametric clips)</span></div>
+    <div class="stat"><b>5-way coin flip</b><span>dim_lights number slots (0.326)</span></div>
+  </div>
+  <div class="filters" id="wrong-filters">
+    <button data-f="all" class="on">all (42)</button>
+    <button data-f="slot">slot (24)</button>
+    <button data-f="cmd">command (18)</button>
+  </div>
+  <div class="grid" id="wrong-cards"><!-- filled by JS --></div>
 </section>
 
 <section id="dataset">
@@ -147,6 +179,9 @@
   VCM project dashboard · AI231 ME2 · generated 2026-09-27 · samples are eval-split clips (model never trains on them)
 </footer>
 
+<script id="wrong-data" type="application/json">
+/*__WRONG__*/
+</script>
 <script id="samples-data" type="application/json">
 /*__SAMPLES__*/
 </script>
@@ -187,6 +222,37 @@ const items = JSON.parse(document.getElementById("samples-data").textContent);
     grid.appendChild(c);
   });
 }
+
+// ---- wrong clips (A2) ----
+const WRONG = JSON.parse(document.getElementById("wrong-data").textContent);
+const wgrid = document.getElementById("wrong-cards");
+WRONG.wrong.forEach(r=>{
+  const c = document.createElement("div");
+  c.className = "card wrong";
+  c.dataset.kind = r.kind;
+  let verdict;
+  if(r.kind === "slot"){
+    verdict = `<span class="vtag">slot: <b>${r.slot_true}</b> → ${r.slot_pred} <span class="conf">${(r.conf*100).toFixed(1)}%</span></span>`;
+  } else {
+    verdict = `<span class="vtag">command: <b>${r.cmd_true}</b> → ${r.cmd_pred} <span class="conf">${(r.conf*100).toFixed(1)}%</span></span>`;
+  }
+  c.innerHTML =
+    `<h3>${r.kind === "slot" ? r.cls : "command"}<span>${r.kind}</span></h3>` +
+    `<img src="wrong/mel_${r.key}.png" alt="spectrogram" loading="lazy">` +
+    `<div class="verdict">${verdict}</div>` +
+    `<div class="row"><audio controls preload="none" src="wrong/${r.key}.wav"></audio></div>` +
+    `<div class="phrase">"${r.phrase}"</div>`;
+  wgrid.appendChild(c);
+});
+const fbtns = document.querySelectorAll("#wrong-filters button");
+fbtns.forEach(b=>b.addEventListener("click",()=>{
+  fbtns.forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");
+  const f = b.dataset.f;
+  wgrid.querySelectorAll(".card").forEach(card=>{
+    card.style.display = (f==="all" || card.dataset.kind===f) ? "" : "none";
+  });
+}));
 
 const wl = document.getElementById("whylist");
 WHY.forEach(w=>{

@@ -62,6 +62,20 @@
   .card .row audio{height:34px;flex:1;min-width:0}
   .card .phrase{font-size:12px;color:var(--dim);padding:0 14px 12px}
   .card .phrase code{color:var(--txt)}
+  /* wrong-clips section */
+  .filters{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+  .filters button{font:13px inherit;color:var(--txt);background:var(--chip);
+        border:1px solid var(--line);border-radius:99px;padding:5px 14px;cursor:pointer}
+  .filters button.on{border-color:var(--bad);color:var(--bad)}
+  .filters button:hover{border-color:var(--acc2)}
+  .card.wrong{border-color:#3a2530}
+  .card.wrong h3{color:var(--bad)}
+  .verdict{display:flex;gap:8px;padding:10px 14px 0;flex-wrap:wrap}
+  .vtag{font-size:12px;padding:3px 10px;border-radius:6px;background:var(--chip);
+        border:1px solid var(--line);color:var(--txt)}
+  .vtag b{color:var(--bad);font-weight:600}
+  .vtag .ok{color:var(--acc)}
+  .vtag .conf{color:var(--dim);font-size:11px}
   /* why list */
   .whyitem{background:var(--panel);border:1px solid var(--line);border-radius:10px;
            padding:14px 16px;margin-bottom:12px}
@@ -74,11 +88,12 @@
 </head>
 <body>
 <header>
-  <h1>VCM — Voice Command Model <small>· AI231 ME2 · on-device, 10 classes, 94K params</small></h1>
-  <div class="meta">Deadline Sat 2026-10-03 · RPi 4B 8GB · PyTorch → ONNX · dataset: edge-tts, speaker-disjoint</div>
+  <h1>VCM — Voice Command Model <small>· AI231 ME2 · on-device, 11 classes + slot head, 100K params</small></h1>
+  <div class="meta">Deadline Sat 2026-10-03 · RPi 4B 8GB · PyTorch → ONNX · dataset: edge-tts, speaker-disjoint · A2 two-head (3.0 s window) trained 2026-09-30</div>
   <nav>
     <a href="#arch">Architecture</a>
     <a href="#timeline">Timeline</a>
+    <a href="#wrong">Wrong clips</a>
     <a href="#dataset">Dataset</a>
     <a href="#whys">Design Whys</a>
   </nav>
@@ -88,11 +103,12 @@
 <section id="overview">
   <h2>At a glance</h2>
   <div class="stats">
-    <div class="stat"><b>13,787</b><span>clips generated (13,800 target)</span></div>
-    <div class="stat"><b>10</b><span>command classes</span></div>
-    <div class="stat"><b>94K</b><span>model params (target &lt;1M)</span></div>
-    <div class="stat"><b>40</b><span>TTS voices (20 train / 20 eval, 0 overlap)</span></div>
-    <div class="stat"><b>80×50</b><span>log-mel input (1 s @ 16 kHz)</span></div>
+    <div class="stat"><b>22,800</b><span>clips generated (v1i, 11 classes)</span></div>
+    <div class="stat"><b>11</b><span>command classes</span></div>
+    <div class="stat"><b>100K</b><span>model params, two-head (target &lt;1M)</span></div>
+    <div class="stat"><b>0.889</b><span>command accuracy (A2, 11,400 eval clips)</span></div>
+    <div class="stat"><b>0.741</b><span>slot accuracy (A2, parametric clips)</span></div>
+    <div class="stat"><b>80×150</b><span>log-mel input (3.0 s @ 16 kHz, 20 ms hop)</span></div>
     <div class="stat"><b>~ms</b><span>inference on Pi (ONNX Runtime)</span></div>
   </div>
 </section>
@@ -100,11 +116,11 @@
 <section id="arch">
   <h2>Architecture <span class="tag">mic → gate → VCM → device</span></h2>
   <div class="flow">
-    <div class="node"><h3>Microphone</h3><p>16 kHz, 1 s windows, 20 ms hop</p></div>
+    <div class="node"><h3>Microphone</h3><p>16 kHz, 3.0 s windows, 20 ms hop</p></div>
     <div class="arrow">→</div>
     <div class="node gate"><h3>Wake gate</h3><p>2-class CNN (wake / no-wake). Always on, tiny, conservative. Trains on ~1–2k clips.</p></div>
     <div class="arrow">→ <span style="font-size:11px;color:var(--dim)">only if woken</span></div>
-    <div class="node"><h3>VCM (intent)</h3><p>3-conv-block CNN, 94K params → 10-way softmax. Tier-1 stretch: + slot head (36-way, joint CE loss).</p></div>
+    <div class="node"><h3>VCM (intent + slot)</h3><p>A2 two-head: 3-conv-block CNN, 100K params → command head (11-way, global max) + slot head (6 per-class sub-heads, 43 values, reads the tail cells where the slot word lives). 3.0 s window, right-aligned.</p></div>
     <div class="arrow">→</div>
     <div class="node"><h3>Mock device</h3><p>POST /device/command → light / timer / thermostat / music / dialer</p></div>
   </div>
@@ -118,12 +134,28 @@
   <ul class="tl">
     <li><span class="d">09-25 (Fri)</span><span>Scaffolding, env, TTS dataset gen, model v1 written</span><span class="st done">done</span></li>
     <li><span class="d">09-26 (Sat)</span><span>First train on generated data, sanity metrics</span><span class="st done">done</span></li>
-    <li><span class="d">09-27 (Sun)</span><span>Augmentation pass, retrain, benchmark harness</span><span class="st now">today</span></li>
-    <li><span class="d">09-28–29</span><span>RPi demo (mic → gate → VCM → mock device), collect classmate eval data</span><span class="st next">next</span></li>
-    <li><span class="d">09-30</span><span>Final train on pooled collective dataset, final numbers</span><span class="st next">next</span></li>
+    <li><span class="d">09-27 (Sun)</span><span>Augmentation pass, retrain, benchmark harness</span><span class="st done">done</span></li>
+    <li><span class="d">09-28–29</span><span>RPi demo (mic → gate → VCM → mock device), collect classmate eval data</span><span class="st done">done</span></li>
+    <li><span class="d">09-30</span><span>A2 two-head (3.0 s window + slot head): build, train, eval — 0.889 cmd / 0.741 slot</span><span class="st now">today</span></li>
     <li><span class="d">10-01–02</span><span>Demo polish, writeup, buffer</span><span class="st next">next</span></li>
     <li><span class="d">10-03</span><span><b>Deadline</b></span><span class="st next">next</span></li>
   </ul>
+</section>
+
+<section id="wrong">
+  <h2>Wrong clips <span class="tag">A2 two-head · eval-split clips the model got wrong · mel = exact model input (3.0 s, right-aligned; red band = slot head's read region)</span></h2>
+  <div class="stats" style="margin-bottom:14px">
+    <div class="stat"><b>42</b><span>wrong clips (24 slot + 18 command)</span></div>
+    <div class="stat"><b>0.889</b><span>command accuracy (11,400 eval clips)</span></div>
+    <div class="stat"><b>0.741</b><span>slot accuracy (parametric clips)</span></div>
+    <div class="stat"><b>5-way coin flip</b><span>dim_lights number slots (0.326)</span></div>
+  </div>
+  <div class="filters" id="wrong-filters">
+    <button data-f="all" class="on">all (42)</button>
+    <button data-f="slot">slot (24)</button>
+    <button data-f="cmd">command (18)</button>
+  </div>
+  <div class="grid" id="wrong-cards"><!-- filled by JS --></div>
 </section>
 
 <section id="dataset">
@@ -147,6 +179,9 @@
   VCM project dashboard · AI231 ME2 · generated 2026-09-27 · samples are eval-split clips (model never trains on them)
 </footer>
 
+<script id="wrong-data" type="application/json">
+{"wrong": [{"key": "slot_set_alarm_00509", "kind": "slot", "phrase": "set an alarm for six pm", "cmd_true": "six pm", "cmd_pred": null, "conf": 0.993, "cls": "set_alarm", "slot_true": "six pm", "slot_pred": "six am"}, {"key": "slot_make_call_01376", "kind": "slot", "phrase": "give dad a call", "cmd_true": "dad", "cmd_pred": null, "conf": 0.98, "cls": "make_call", "slot_true": "dad", "slot_pred": "mom"}, {"key": "slot_set_reminder_01067", "kind": "slot", "phrase": "remind me to pay the bills", "cmd_true": "pay the bills", "cmd_pred": null, "conf": 0.973, "cls": "set_reminder", "slot_true": "pay the bills", "slot_pred": "take out the trash"}, {"key": "slot_set_alarm_00510", "kind": "slot", "phrase": "set an alarm for six pm", "cmd_true": "six pm", "cmd_pred": null, "conf": 0.972, "cls": "set_alarm", "slot_true": "six pm", "slot_pred": "six am"}, {"key": "slot_set_reminder_00033", "kind": "slot", "phrase": "remind me to buy groceries", "cmd_true": "buy groceries", "cmd_pred": null, "conf": 0.966, "cls": "set_reminder", "slot_true": "buy groceries", "slot_pred": "pay the bills"}, {"key": "slot_set_timer_01147", "kind": "slot", "phrase": "set a timer for forty five minutes", "cmd_true": "forty five", "cmd_pred": null, "conf": 0.939, "cls": "set_timer", "slot_true": "forty five", "slot_pred": "five"}, {"key": "slot_set_temperature_00937", "kind": "slot", "phrase": "set the thermostat to twenty two degrees", "cmd_true": "twenty two", "cmd_pred": null, "conf": 0.916, "cls": "set_temperature", "slot_true": "twenty two", "slot_pred": "eighteen"}, {"key": "slot_make_call_01678", "kind": "slot", "phrase": "give dad a call", "cmd_true": "dad", "cmd_pred": null, "conf": 0.911, "cls": "make_call", "slot_true": "dad", "slot_pred": "mom"}, {"key": "slot_set_timer_01146", "kind": "slot", "phrase": "set a timer for forty five minutes", "cmd_true": "forty five", "cmd_pred": null, "conf": 0.894, "cls": "set_timer", "slot_true": "forty five", "slot_pred": "five"}, {"key": "slot_set_temperature_00535", "kind": "slot", "phrase": "set the temperature to twenty eight degrees", "cmd_true": "twenty eight", "cmd_pred": null, "conf": 0.89, "cls": "set_temperature", "slot_true": "twenty eight", "slot_pred": "twenty six"}, {"key": "slot_dim_lights_00235", "kind": "slot", "phrase": "dim the lights to thirty percent", "cmd_true": "thirty", "cmd_pred": null, "conf": 0.834, "cls": "dim_lights", "slot_true": "thirty", "slot_pred": "eighty"}, {"key": "slot_dim_lights_00264", "kind": "slot", "phrase": "dim the lights to thirty percent", "cmd_true": "thirty", "cmd_pred": null, "conf": 0.772, "cls": "dim_lights", "slot_true": "thirty", "slot_pred": "fifty"}, {"key": "slot_set_reminder_01060", "kind": "slot", "phrase": "remind me to drink water", "cmd_true": "drink water", "cmd_pred": null, "conf": 0.377, "cls": "set_reminder", "slot_true": "drink water", "slot_pred": "take out the trash"}, {"key": "slot_set_reminder_00283", "kind": "slot", "phrase": "remind me at five pm", "cmd_true": "five pm", "cmd_pred": null, "conf": 0.347, "cls": "set_reminder", "slot_true": "five pm", "slot_pred": "tomorrow"}, {"key": "slot_make_call_01310", "kind": "slot", "phrase": "give dad a call", "cmd_true": "dad", "cmd_pred": null, "conf": 0.322, "cls": "make_call", "slot_true": "dad", "slot_pred": "brother"}, {"key": "slot_make_call_00786", "kind": "slot", "phrase": "call sister", "cmd_true": "sister", "cmd_pred": null, "conf": 0.307, "cls": "make_call", "slot_true": "sister", "slot_pred": "dad"}, {"key": "slot_set_alarm_00792", "kind": "slot", "phrase": "set an alarm for five am", "cmd_true": "five am", "cmd_pred": null, "conf": 0.255, "cls": "set_alarm", "slot_true": "five am", "slot_pred": "eight am"}, {"key": "slot_set_alarm_01399", "kind": "slot", "phrase": "wake me up at seven am", "cmd_true": "seven am", "cmd_pred": null, "conf": 0.25, "cls": "set_alarm", "slot_true": "seven am", "slot_pred": "eight am"}, {"key": "slot_dim_lights_00142", "kind": "slot", "phrase": "dim the lights to thirty percent", "cmd_true": "thirty", "cmd_pred": null, "conf": 0.233, "cls": "dim_lights", "slot_true": "thirty", "slot_pred": "twenty"}, {"key": "slot_dim_lights_00471", "kind": "slot", "phrase": "dim the lights to thirty percent", "cmd_true": "thirty", "cmd_pred": null, "conf": 0.213, "cls": "dim_lights", "slot_true": "thirty", "slot_pred": "seventy"}, {"key": "slot_set_temperature_01091", "kind": "slot", "phrase": "set the temperature to twenty six degrees", "cmd_true": "twenty six", "cmd_pred": null, "conf": 0.198, "cls": "set_temperature", "slot_true": "twenty six", "slot_pred": "twenty two"}, {"key": "slot_set_temperature_00573", "kind": "slot", "phrase": "set the temperature to twenty two degrees", "cmd_true": "twenty two", "cmd_pred": null, "conf": 0.192, "cls": "set_temperature", "slot_true": "twenty two", "slot_pred": "twenty six"}, {"key": "slot_set_timer_00491", "kind": "slot", "phrase": "set a timer for one minute", "cmd_true": "one", "cmd_pred": null, "conf": 0.187, "cls": "set_timer", "slot_true": "one", "slot_pred": "ten"}, {"key": "slot_set_timer_00836", "kind": "slot", "phrase": "start a timer for one minute", "cmd_true": "one", "cmd_pred": null, "conf": 0.178, "cls": "set_timer", "slot_true": "one", "slot_pred": "ten"}, {"key": "cmd_media_control__to__play_music_00593", "kind": "cmd", "phrase": "pause the music", "cmd_true": "media_control", "cmd_pred": "play_music", "conf": 0.923}, {"key": "cmd_dim_lights__to__control_lights_00274", "kind": "cmd", "phrase": "dim the lights", "cmd_true": "dim_lights", "cmd_pred": "control_lights", "conf": 0.903}, {"key": "cmd_media_control__to__play_music_00592", "kind": "cmd", "phrase": "pause the music", "cmd_true": "media_control", "cmd_pred": "play_music", "conf": 0.891}, {"key": "cmd_media_control__to__play_music_00942", "kind": "cmd", "phrase": "pause the music", "cmd_true": "media_control", "cmd_pred": "play_music", "conf": 0.878}, {"key": "cmd_dim_lights__to__control_lights_00275", "kind": "cmd", "phrase": "dim the lights", "cmd_true": "dim_lights", "cmd_pred": "control_lights", "conf": 0.868}, {"key": "cmd_dim_lights__to__control_lights_00273", "kind": "cmd", "phrase": "dim the lights", "cmd_true": "dim_lights", "cmd_pred": "control_lights", "conf": 0.86}, {"key": "cmd_set_reminder__to__set_timer_00942", "kind": "cmd", "phrase": "set a reminder for next week", "cmd_true": "set_reminder", "cmd_pred": "set_timer", "conf": 0.846}, {"key": "cmd_media_control__to__make_call_00488", "kind": "cmd", "phrase": "quieter", "cmd_true": "media_control", "cmd_pred": "make_call", "conf": 0.809}, {"key": "cmd_media_control__to__make_call_00487", "kind": "cmd", "phrase": "quieter", "cmd_true": "media_control", "cmd_pred": "make_call", "conf": 0.791}, {"key": "cmd_play_music__to__media_control_00072", "kind": "cmd", "phrase": "play a song", "cmd_true": "play_music", "cmd_pred": "media_control", "conf": 0.789}, {"key": "cmd_control_lights__to__media_control_00019", "kind": "cmd", "phrase": "lights off", "cmd_true": "control_lights", "cmd_pred": "media_control", "conf": 0.755}, {"key": "cmd_media_control__to__make_call_00486", "kind": "cmd", "phrase": "quieter", "cmd_true": "media_control", "cmd_pred": "make_call", "conf": 0.748}, {"key": "cmd_play_music__to__media_control_00071", "kind": "cmd", "phrase": "play a song", "cmd_true": "play_music", "cmd_pred": "media_control", "conf": 0.718}, {"key": "cmd_play_music__to__media_control_00303", "kind": "cmd", "phrase": "play music", "cmd_true": "play_music", "cmd_pred": "media_control", "conf": 0.699}, {"key": "cmd_control_lights__to__media_control_00020", "kind": "cmd", "phrase": "lights off", "cmd_true": "control_lights", "cmd_pred": "media_control", "conf": 0.689}, {"key": "cmd_set_reminder__to__set_timer_00347", "kind": "cmd", "phrase": "add a reminder to water the plants", "cmd_true": "set_reminder", "cmd_pred": "set_timer", "conf": 0.683}, {"key": "cmd_control_lights__to__media_control_00018", "kind": "cmd", "phrase": "lights off", "cmd_true": "control_lights", "cmd_pred": "media_control", "conf": 0.671}, {"key": "cmd_set_reminder__to__set_timer_00288", "kind": "cmd", "phrase": "add a reminder to water the plants", "cmd_true": "set_reminder", "cmd_pred": "set_timer", "conf": 0.65}], "n_wrong": 42, "n_slot": 24, "n_cmd": 18}
+</script>
 <script id="samples-data" type="application/json">
 [
  {
@@ -368,6 +403,37 @@ const items = JSON.parse(document.getElementById("samples-data").textContent);
     grid.appendChild(c);
   });
 }
+
+// ---- wrong clips (A2) ----
+const WRONG = JSON.parse(document.getElementById("wrong-data").textContent);
+const wgrid = document.getElementById("wrong-cards");
+WRONG.wrong.forEach(r=>{
+  const c = document.createElement("div");
+  c.className = "card wrong";
+  c.dataset.kind = r.kind;
+  let verdict;
+  if(r.kind === "slot"){
+    verdict = `<span class="vtag">slot: <b>${r.slot_true}</b> → ${r.slot_pred} <span class="conf">${(r.conf*100).toFixed(1)}%</span></span>`;
+  } else {
+    verdict = `<span class="vtag">command: <b>${r.cmd_true}</b> → ${r.cmd_pred} <span class="conf">${(r.conf*100).toFixed(1)}%</span></span>`;
+  }
+  c.innerHTML =
+    `<h3>${r.kind === "slot" ? r.cls : "command"}<span>${r.kind}</span></h3>` +
+    `<img src="wrong/mel_${r.key}.png" alt="spectrogram" loading="lazy">` +
+    `<div class="verdict">${verdict}</div>` +
+    `<div class="row"><audio controls preload="none" src="wrong/${r.key}.wav"></audio></div>` +
+    `<div class="phrase">"${r.phrase}"</div>`;
+  wgrid.appendChild(c);
+});
+const fbtns = document.querySelectorAll("#wrong-filters button");
+fbtns.forEach(b=>b.addEventListener("click",()=>{
+  fbtns.forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");
+  const f = b.dataset.f;
+  wgrid.querySelectorAll(".card").forEach(card=>{
+    card.style.display = (f==="all" || card.dataset.kind===f) ? "" : "none";
+  });
+}));
 
 const wl = document.getElementById("whylist");
 WHY.forEach(w=>{
