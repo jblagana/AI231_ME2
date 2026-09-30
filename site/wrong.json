@@ -7,6 +7,8 @@
    "cmd_true": "six pm",
    "cmd_pred": null,
    "conf": 0.993,
+   "dur": 2.472,
+   "over3": false,
    "cls": "set_alarm",
    "slot_true": "six pm",
    "slot_pred": "six am"
@@ -18,6 +20,8 @@
    "cmd_true": "dad",
    "cmd_pred": null,
    "conf": 0.98,
+   "dur": 2.64,
+   "over3": false,
    "cls": "make_call",
    "slot_true": "dad",
    "slot_pred": "mom"
@@ -29,6 +33,8 @@
    "cmd_true": "pay the bills",
    "cmd_pred": null,
    "conf": 0.973,
+   "dur": 2.184,
+   "over3": false,
    "cls": "set_reminder",
    "slot_true": "pay the bills",
    "slot_pred": "take out the trash"
@@ -40,6 +46,8 @@
    "cmd_true": "six pm",
    "cmd_pred": null,
    "conf": 0.972,
+   "dur": 2.376,
+   "over3": false,
    "cls": "set_alarm",
    "slot_true": "six pm",
    "slot_pred": "six am"
@@ -51,6 +59,8 @@
    "cmd_true": "buy groceries",
    "cmd_pred": null,
    "conf": 0.966,
+   "dur": 2.16,
+   "over3": false,
    "cls": "set_reminder",
    "slot_true": "buy groceries",
    "slot_pred": "pay the bills"
@@ -62,6 +72,8 @@
    "cmd_true": "forty five",
    "cmd_pred": null,
    "conf": 0.939,
+   "dur": 3.024,
+   "over3": true,
    "cls": "set_timer",
    "slot_true": "forty five",
    "slot_pred": "five"
@@ -73,6 +85,8 @@
    "cmd_true": "twenty two",
    "cmd_pred": null,
    "conf": 0.916,
+   "dur": 3.552,
+   "over3": true,
    "cls": "set_temperature",
    "slot_true": "twenty two",
    "slot_pred": "eighteen"
@@ -84,6 +98,8 @@
    "cmd_true": "dad",
    "cmd_pred": null,
    "conf": 0.911,
+   "dur": 2.04,
+   "over3": false,
    "cls": "make_call",
    "slot_true": "dad",
    "slot_pred": "mom"
@@ -95,6 +111,8 @@
    "cmd_true": "forty five",
    "cmd_pred": null,
    "conf": 0.894,
+   "dur": 3.168,
+   "over3": true,
    "cls": "set_timer",
    "slot_true": "forty five",
    "slot_pred": "five"
@@ -106,6 +124,8 @@
    "cmd_true": "twenty eight",
    "cmd_pred": null,
    "conf": 0.89,
+   "dur": 2.976,
+   "over3": false,
    "cls": "set_temperature",
    "slot_true": "twenty eight",
    "slot_pred": "twenty six"
@@ -117,6 +137,8 @@
    "cmd_true": "thirty",
    "cmd_pred": null,
    "conf": 0.834,
+   "dur": 2.736,
+   "over3": false,
    "cls": "dim_lights",
    "slot_true": "thirty",
    "slot_pred": "eighty"
@@ -128,6 +150,8 @@
    "cmd_true": "thirty",
    "cmd_pred": null,
    "conf": 0.772,
+   "dur": 2.76,
+   "over3": false,
    "cls": "dim_lights",
    "slot_true": "thirty",
    "slot_pred": "fifty"
@@ -139,6 +163,8 @@
    "cmd_true": "drink water",
    "cmd_pred": null,
    "conf": 0.377,
+   "dur": 1.872,
+   "over3": false,
    "cls": "set_reminder",
    "slot_true": "drink water",
    "slot_pred": "take out the trash"
@@ -150,6 +176,8 @@
    "cmd_true": "five pm",
    "cmd_pred": null,
    "conf": 0.347,
+   "dur": 2.712,
+   "over3": false,
    "cls": "set_reminder",
    "slot_true": "five pm",
    "slot_pred": "tomorrow"
@@ -161,6 +189,8 @@
    "cmd_true": "dad",
    "cmd_pred": null,
    "conf": 0.322,
+   "dur": 1.944,
+   "over3": false,
    "cls": "make_call",
    "slot_true": "dad",
    "slot_pred": "brother"
@@ -172,6 +202,8 @@
    "cmd_true": "sister",
    "cmd_pred": null,
    "conf": 0.307,
+   "dur": 2.352,
+   "over3": false,
    "cls": "make_call",
    "slot_true": "sister",
    "slot_pred": "dad"
@@ -183,6 +215,8 @@
    "cmd_true": "five am",
    "cmd_pred": null,
    "conf": 0.255,
+   "dur": 3.096,
+   "over3": true,
    "cls": "set_alarm",
    "slot_true": "five am",
    "slot_pred": "eight am"
@@ -194,6 +228,8 @@
    "cmd_true": "seven am",
    "cmd_pred": null,
    "conf": 0.25,
+   "dur": 3.048,
+   "over3": true,
    "cls": "set_alarm",
    "slot_true": "seven am",
    "slot_pred": "eight am"
@@ -205,6 +241,8 @@
    "cmd_true": "thirty",
    "cmd_pred": null,
    "conf": 0.233,
+   "dur": 2.808,
+   "over3": false,
    "cls": "dim_lights",
    "slot_true": "thirty",
    "slot_pred": "twenty"
@@ -216,6 +254,8 @@
    "cmd_true": "thirty",
    "cmd_pred": null,
    "conf": 0.213,
+   "dur": 3.072,
+   "over3": true,
    "cls": "dim_lights",
    "slot_true": "thirty",
    "slot_pred": "seventy"
@@ -227,6 +267,8 @@
    "cmd_true": "twenty six",
    "cmd_pred": null,
    "conf": 0.198,
+   "dur": 3.6,
+   "over3": true,
    "cls": "set_temperature",
    "slot_true": "twenty six",
    "slot_pred": "twenty two"
@@ -238,6 +280,8 @@
    "cmd_true": "twenty two",
    "cmd_pred": null,
    "conf": 0.192,
+   "dur": 3.696,
+   "over3": true,
    "cls": "set_temperature",
    "slot_true": "twenty two",
    "slot_pred": "twenty six"
@@ -249,6 +293,8 @@
    "cmd_true": "one",
    "cmd_pred": null,
    "conf": 0.187,
+   "dur": 2.856,
+   "over3": false,
    "cls": "set_timer",
    "slot_true": "one",
    "slot_pred": "ten"
@@ -260,6 +306,8 @@
    "cmd_true": "one",
    "cmd_pred": null,
    "conf": 0.178,
+   "dur": 2.928,
+   "over3": false,
    "cls": "set_timer",
    "slot_true": "one",
    "slot_pred": "ten"
@@ -270,7 +318,9 @@
    "phrase": "pause the music",
    "cmd_true": "media_control",
    "cmd_pred": "play_music",
-   "conf": 0.923
+   "conf": 0.923,
+   "dur": 2.136,
+   "over3": false
   },
   {
    "key": "cmd_dim_lights__to__control_lights_00274",
@@ -278,7 +328,9 @@
    "phrase": "dim the lights",
    "cmd_true": "dim_lights",
    "cmd_pred": "control_lights",
-   "conf": 0.903
+   "conf": 0.903,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_media_control__to__play_music_00592",
@@ -286,7 +338,9 @@
    "phrase": "pause the music",
    "cmd_true": "media_control",
    "cmd_pred": "play_music",
-   "conf": 0.891
+   "conf": 0.891,
+   "dur": 2.232,
+   "over3": false
   },
   {
    "key": "cmd_media_control__to__play_music_00942",
@@ -294,7 +348,9 @@
    "phrase": "pause the music",
    "cmd_true": "media_control",
    "cmd_pred": "play_music",
-   "conf": 0.878
+   "conf": 0.878,
+   "dur": 2.136,
+   "over3": false
   },
   {
    "key": "cmd_dim_lights__to__control_lights_00275",
@@ -302,7 +358,9 @@
    "phrase": "dim the lights",
    "cmd_true": "dim_lights",
    "cmd_pred": "control_lights",
-   "conf": 0.868
+   "conf": 0.868,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_dim_lights__to__control_lights_00273",
@@ -310,7 +368,9 @@
    "phrase": "dim the lights",
    "cmd_true": "dim_lights",
    "cmd_pred": "control_lights",
-   "conf": 0.86
+   "conf": 0.86,
+   "dur": 1.944,
+   "over3": false
   },
   {
    "key": "cmd_set_reminder__to__set_timer_00942",
@@ -318,7 +378,9 @@
    "phrase": "set a reminder for next week",
    "cmd_true": "set_reminder",
    "cmd_pred": "set_timer",
-   "conf": 0.846
+   "conf": 0.846,
+   "dur": 3.072,
+   "over3": true
   },
   {
    "key": "cmd_media_control__to__make_call_00488",
@@ -326,7 +388,9 @@
    "phrase": "quieter",
    "cmd_true": "media_control",
    "cmd_pred": "make_call",
-   "conf": 0.809
+   "conf": 0.809,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_media_control__to__make_call_00487",
@@ -334,7 +398,9 @@
    "phrase": "quieter",
    "cmd_true": "media_control",
    "cmd_pred": "make_call",
-   "conf": 0.791
+   "conf": 0.791,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_play_music__to__media_control_00072",
@@ -342,7 +408,9 @@
    "phrase": "play a song",
    "cmd_true": "play_music",
    "cmd_pred": "media_control",
-   "conf": 0.789
+   "conf": 0.789,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_control_lights__to__media_control_00019",
@@ -350,7 +418,9 @@
    "phrase": "lights off",
    "cmd_true": "control_lights",
    "cmd_pred": "media_control",
-   "conf": 0.755
+   "conf": 0.755,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_media_control__to__make_call_00486",
@@ -358,7 +428,9 @@
    "phrase": "quieter",
    "cmd_true": "media_control",
    "cmd_pred": "make_call",
-   "conf": 0.748
+   "conf": 0.748,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_play_music__to__media_control_00071",
@@ -366,7 +438,9 @@
    "phrase": "play a song",
    "cmd_true": "play_music",
    "cmd_pred": "media_control",
-   "conf": 0.718
+   "conf": 0.718,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_play_music__to__media_control_00303",
@@ -374,7 +448,9 @@
    "phrase": "play music",
    "cmd_true": "play_music",
    "cmd_pred": "media_control",
-   "conf": 0.699
+   "conf": 0.699,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_control_lights__to__media_control_00020",
@@ -382,7 +458,9 @@
    "phrase": "lights off",
    "cmd_true": "control_lights",
    "cmd_pred": "media_control",
-   "conf": 0.689
+   "conf": 0.689,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_set_reminder__to__set_timer_00347",
@@ -390,7 +468,9 @@
    "phrase": "add a reminder to water the plants",
    "cmd_true": "set_reminder",
    "cmd_pred": "set_timer",
-   "conf": 0.683
+   "conf": 0.683,
+   "dur": 3.432,
+   "over3": true
   },
   {
    "key": "cmd_control_lights__to__media_control_00018",
@@ -398,7 +478,9 @@
    "phrase": "lights off",
    "cmd_true": "control_lights",
    "cmd_pred": "media_control",
-   "conf": 0.671
+   "conf": 0.671,
+   "dur": 1.872,
+   "over3": false
   },
   {
    "key": "cmd_set_reminder__to__set_timer_00288",
@@ -406,7 +488,9 @@
    "phrase": "add a reminder to water the plants",
    "cmd_true": "set_reminder",
    "cmd_pred": "set_timer",
-   "conf": 0.65
+   "conf": 0.65,
+   "dur": 3.096,
+   "over3": true
   }
  ],
  "n_wrong": 42,

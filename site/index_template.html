@@ -68,8 +68,16 @@
         border:1px solid var(--line);border-radius:99px;padding:5px 14px;cursor:pointer}
   .filters button.on{border-color:var(--bad);color:var(--bad)}
   .filters button:hover{border-color:var(--acc2)}
+  .filters button.o3{border-color:#5a4a2a;color:#d9a441}
+  .filters button.o3.on{border-color:#d9a441;color:#d9a441}
+  .filters button .o3note{font-size:10px;color:var(--dim);font-weight:400;margin-left:6px}
   .card.wrong{border-color:#3a2530}
   .card.wrong h3{color:var(--bad)}
+  .card.wrong.over3{border-color:#5a4a2a;box-shadow:0 0 0 1px #5a4a2a inset}
+  .card.wrong.over3 h3{color:#d9a441}
+  .o3badge{display:inline-block;margin-left:8px;font-size:10px;font-weight:600;
+        color:#d9a441;border:1px solid #5a4a2a;border-radius:5px;padding:1px 7px;
+        vertical-align:middle;background:#2a2110}
   .verdict{display:flex;gap:8px;padding:10px 14px 0;flex-wrap:wrap}
   .vtag{font-size:12px;padding:3px 10px;border-radius:6px;background:var(--chip);
         border:1px solid var(--line);color:var(--txt)}
@@ -154,6 +162,7 @@
     <button data-f="all" class="on">all (42)</button>
     <button data-f="slot">slot (24)</button>
     <button data-f="cmd">command (18)</button>
+    <button data-f="over3" class="o3">&gt;3.0 s (11) <span class="o3note">raw clip longer than the window → tail-cropped, mel fills the whole map</span></button>
   </div>
   <div class="grid" id="wrong-cards"><!-- filled by JS --></div>
 </section>
@@ -228,16 +237,19 @@ const WRONG = JSON.parse(document.getElementById("wrong-data").textContent);
 const wgrid = document.getElementById("wrong-cards");
 WRONG.wrong.forEach(r=>{
   const c = document.createElement("div");
-  c.className = "card wrong";
+  c.className = "card wrong" + (r.over3 ? " over3" : "");
   c.dataset.kind = r.kind;
+  c.dataset.over3 = r.over3 ? "1" : "0";
   let verdict;
   if(r.kind === "slot"){
     verdict = `<span class="vtag">slot: <b>${r.slot_true}</b> → ${r.slot_pred} <span class="conf">${(r.conf*100).toFixed(1)}%</span></span>`;
   } else {
     verdict = `<span class="vtag">command: <b>${r.cmd_true}</b> → ${r.cmd_pred} <span class="conf">${(r.conf*100).toFixed(1)}%</span></span>`;
   }
+  const o3badge = r.over3
+    ? `<span class="o3badge">&gt;3.0 s · tail-cropped (${r.dur.toFixed(2)} s)</span>` : "";
   c.innerHTML =
-    `<h3>${r.kind === "slot" ? r.cls : "command"}<span>${r.kind}</span></h3>` +
+    `<h3>${r.kind === "slot" ? r.cls : "command"}<span>${r.kind}</span>${o3badge}</h3>` +
     `<img src="wrong/mel_${r.key}.png" alt="spectrogram" loading="lazy">` +
     `<div class="verdict">${verdict}</div>` +
     `<div class="row"><audio controls preload="none" src="wrong/${r.key}.wav"></audio></div>` +
@@ -250,7 +262,11 @@ fbtns.forEach(b=>b.addEventListener("click",()=>{
   b.classList.add("on");
   const f = b.dataset.f;
   wgrid.querySelectorAll(".card").forEach(card=>{
-    card.style.display = (f==="all" || card.dataset.kind===f) ? "" : "none";
+    const show = f==="all"
+      ? true
+      : f==="over3" ? card.dataset.over3==="1"
+      : card.dataset.kind===f;
+    card.style.display = show ? "" : "none";
   });
 }));
 

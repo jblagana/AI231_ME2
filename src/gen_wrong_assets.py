@@ -99,11 +99,13 @@ def main() -> int:
         shutil.copy2(wav_p, WRONG_OUT / f"{key}.wav")
         wav = load_wav(wav_p)
 
+        dur = wav.shape[-1] / SR  # raw seconds (pre-window)
         row = {
             "key": key, "kind": c["kind"], "phrase": c["phrase"],
             "cmd_true": c["true"],
             "cmd_pred": c.get("pred") if c["kind"] == "cmd" else None,
             "conf": c.get("slot_conf") if c["kind"] == "slot" else c.get("cmd_conf"),
+            "dur": round(dur, 3), "over3": dur > 3.0,
         }
         if c["kind"] == "slot":
             row["cls"] = c["cls"]
