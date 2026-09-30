@@ -64,7 +64,7 @@ def wav_to_logmel(wav: torch.Tensor) -> torch.Tensor:
     return logmel[..., :N_FRAMES]
 
 
-def render_mel(wav: torch.Tensor, stem: str, title: str) -> None:
+def render_mel(wav: torch.Tensor, stem: str, title: str, dur: float) -> None:
     lm = wav_to_logmel(wav).squeeze(0).T  # (150, 80)
     fig, ax = plt.subplots(figsize=(12, 6.4), dpi=100)
     im = ax.imshow(lm.numpy(), origin="lower", aspect="auto", cmap="viridis")
@@ -72,6 +72,20 @@ def render_mel(wav: torch.Tensor, stem: str, title: str) -> None:
     x0 = N_FRAMES - SLOT_TAIL_CELLS * 10  # 150 - 80 = 70
     ax.axvspan(x0, N_FRAMES, color="#e06c75", alpha=0.18)
     ax.text(x0 + 2, 76, "slot head reads", color="#e06c75", fontsize=8)
+    if dur < 3.0:
+        # left pad band = added zeros (the dark left band on short clips);
+        # exact raw frame count from the same MelSpectrogram (center=True:
+        # frames = 1 + N // hop) — read straight off the tensor, not guessed
+        raw_frames = _MEL(wav).shape[-1]
+        pad = N_FRAMES - raw_frames
+        ax.axvspan(0, pad, color="#5aa9ff", alpha=0.25)
+        ax.text(pad / 2, 76, f"pad {pad / 50:.2f} s",
+                color="#5aa9ff", fontsize=8, ha="center")
+    else:
+        # tail-cropped: the first (dur - 3.0) s of the clip is off-window
+        cropped = dur - 3.0
+        ax.text(2, 76, f"first {cropped:.2f} s cropped (off-window)",
+                color="#d9a441", fontsize=8)
     ax.set_title(title, fontsize=10)
     ax.set_xticks([0, 30, 60, 90, 120, 149])
     ax.set_xticklabels(["0", "0.6", "1.2", "1.8", "2.4", "3.0"])
@@ -116,7 +130,7 @@ def main() -> int:
         else:
             title = (f'"{c["phrase"]}"  ·  command: {c["true"]} → '
                      f'{c["pred"]}  ({c["cmd_conf"]:.2f})')
-        render_mel(wav, key, title)
+        render_mel(wav, key, title, dur)
         wrong.append(row)
         print(f"  {key}")
 

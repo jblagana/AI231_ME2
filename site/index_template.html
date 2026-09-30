@@ -151,7 +151,7 @@
 </section>
 
 <section id="wrong">
-  <h2>Wrong clips <span class="tag">A2 two-head · eval-split clips the model got wrong · mel = exact model input (3.0 s, right-aligned; red band = slot head's read region)</span></h2>
+  <h2>Wrong clips <span class="tag">A2 two-head · eval-split clips the model got wrong · mel = exact model input (3.0 s, right-aligned; red band = slot head's read region, blue band = added left pad on &lt;3 s clips)</span></h2>
   <div class="stats" style="margin-bottom:14px">
     <div class="stat"><b>42</b><span>wrong clips (24 slot + 18 command)</span></div>
     <div class="stat"><b>0.889</b><span>command accuracy (11,400 eval clips)</span></div>
@@ -247,7 +247,7 @@ WRONG.wrong.forEach(r=>{
     verdict = `<span class="vtag">command: <b>${r.cmd_true}</b> → ${r.cmd_pred} <span class="conf">${(r.conf*100).toFixed(1)}%</span></span>`;
   }
   const o3badge = r.over3
-    ? `<span class="o3badge">&gt;3.0 s · tail-cropped (${r.dur.toFixed(2)} s)</span>` : "";
+    ? `<span class="o3badge">&gt;3.0 s · first ${(r.dur - 3.0).toFixed(2)} s cropped (off-window)</span>` : "";
   c.innerHTML =
     `<h3>${r.kind === "slot" ? r.cls : "command"}<span>${r.kind}</span>${o3badge}</h3>` +
     `<img src="wrong/mel_${r.key}.png" alt="spectrogram" loading="lazy">` +
