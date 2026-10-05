@@ -15,6 +15,7 @@ Usage (on the Pi, from the package dir):
 """
 import argparse
 import json
+import os
 import random
 import re
 import sys
@@ -458,23 +459,26 @@ def _time_reply():
     t = time.localtime()
     h = t.tm_hour % 12 or 12
     ap = "AM" if t.tm_hour < 12 else "PM"
-    return (f"It's {h}:{t.tm_min:02d} {ap}", "It's " + _time_words(t))
+    return (f"{h}:{t.tm_min:02d} {ap}", _time_words(t))
 
 
 def _weather_reply():
     """(chip text, speak text) for ask_weather — weather only, live
-    open-meteo (UP Diliman)."""
+    open-meteo, spoken with the location name (ME2_LOCATION) so the
+    answer says WHERE the number is from."""
     w = STATE.get("weather")
     if w and w.get("temp") is not None and STATE.get("weather_online"):
         cond = str(w.get("condition") or "all good").strip().capitalize()
-        return (f"{cond}, {w['temp']:.0f}°",
-                f"{cond}, {_int_words(w['temp'])} degrees")
+        return (f"{ME2_LOCATION}: {cond}, {w['temp']:.0f}°",
+                f"In {ME2_LOCATION}, {cond}, "
+                f"{_int_words(w['temp'])} degrees")
     if w and w.get("temp") is not None:
         # Offline but the last fetch is <=15 min old: the caller speaks
         # apology + stale-lead clips, then this cached data as the tail.
         cond = str(w.get("condition") or "all good").strip().capitalize()
-        return (f"{cond}, {w['temp']:.0f}° (15 min old)",
-                f"{cond}, {_int_words(w['temp'])} degrees")
+        return (f"{ME2_LOCATION}: {cond}, {w['temp']:.0f}° (15 min old)",
+                f"In {ME2_LOCATION}, {cond}, "
+                f"{_int_words(w['temp'])} degrees")
     return ("Sorry, no internet connection.",
             "Sorry, no internet connection.")
 
@@ -881,14 +885,14 @@ def apply_fire(f: dict) -> str:
         chip, speak_text = _weather_reply()
         add_chip(chip)
         if STATE.get("weather_online"):
-            speak_clips([_clip_name(cmd, slot)], tail=speak_text)
-        elif (STATE.get("weather") or {}).get("temp") is not None:
-            # Offline + stale cache (<=15 min): apology + stale-lead
-            # clips, then the cached data as the TTS/espeak tail.
-            speak_clips([_clip_name(cmd, slot), "no_internet",
-                         "stale_lead"], tail=speak_text)
+            # All-TTS reply (2026-10-06): no lead clip, no glue — weather
+            # is internet-dependent anyway, so the TTS round-trip is
+            # already in the path. speak_text carries the location itself
+            # ("In UP Diliman, sunny, 29 degrees") — no prefix here.
+            speak_clips([], tail=speak_text)
         else:
-            speak_clips([_clip_name(cmd, slot), "no_internet"])
+            # Offline: default clip only — no glue, no stale tail.
+            speak_clips(["no_internet"])
     # --- timers & alarms ---
     elif cmd == "TIMER":
         secs = _timer_secs(slot)
@@ -991,6 +995,11 @@ def state_json() -> dict:
 # ---------------------------------------------------------------- weather
 # open-meteo, stdlib only, 15-min cache. Fail-soft: no internet (Pi on a
 # phone hotspot) -> last good value, or None until the first success.
+# Location is BOSS-SET, not geocoded (Opt 1, 2026-10-06): the exact point
+# is hardcoded here (UP Diliman campus) and overridable via env vars
+# ME2_LOCATION / ME2_LAT / ME2_LON. The name is spoken back in the reply
+# so the answer is specific about WHERE the number is from.
+ME2_LOCATION = os.environ.get("ME2_LOCATION", "UP Diliman")
 WMO = {0: ("☀️", "clear"), 1: ("🌤️", "mainly clear"),
        2: ("⛅", "partly cloudy"), 3: ("☁️", "overcast"),
        45: ("🌫️", "fog"), 48: ("🌫️", "rime fog"),
@@ -1010,8 +1019,9 @@ WMO = {0: ("☀️", "clear"), 1: ("🌤️", "mainly clear"),
 
 
 def _weather_fetch():
-    import os
     import urllib.request
+    # Exact campus point (14.6532, 121.0806) — the geocoder would return
+    # Quezon City's centroid, not the campus; boss-set, env-overridable.
     lat = os.environ.get("ME2_LAT", "14.6532")   # UP Diliman, Quezon City
     lon = os.environ.get("ME2_LON", "121.0806")
     url = ("https://api.open-meteo.com/v1/forecast"
