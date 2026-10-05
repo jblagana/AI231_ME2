@@ -138,7 +138,9 @@ DEV = {
     "chips": deque(maxlen=6),  # (text, ts)
     "speaking_until": 0.0,     # TTS self-trigger window (pi_demo guard)
 }
-_LAST_FIRE = {}  # (cmd, slot) -> ts, 2 s debounce (ACTUATION guardrail)
+_LAST_FIRE = {}  # (cmd, slot) -> ts, 0.5 s debounce (was 2 s; speaker has
+# auto echo cancellation — the scaling self-trigger guard is the real
+# double-fire protection, so a fast re-fire of the same command is safe)
 
 
 def add_chip(text: str):
@@ -753,7 +755,7 @@ def apply_fire(f: dict) -> str:
     if conf < 0.50:  # confidence gate (ACTUATION)
         add_chip(f"heard something ({conf:.2f}) — below gate")
         return "gated"
-    if cmd != "SET_VOLUME" and now - _LAST_FIRE.get((cmd, slot), 0.0) < 2.0:
+    if cmd != "SET_VOLUME" and now - _LAST_FIRE.get((cmd, slot), 0.0) < 0.5:
         return "debounced"
     _LAST_FIRE[(cmd, slot)] = now
 
@@ -816,8 +818,10 @@ def apply_fire(f: dict) -> str:
             speak_clips([_clip_name(cmd, slot)])
         elif m["paused"]:
             m.update(playing=False, user_paused=True)
+            speak_clips([_clip_name(cmd, slot)])
         else:
             add_chip("nothing to pause")
+            speak_clips([_clip_name(cmd, slot)])
     elif cmd == "RESUME":
         # "resume music" — relaunch from the paused sample offset.
         m = DEV["music"]
